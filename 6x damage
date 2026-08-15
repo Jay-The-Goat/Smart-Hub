@@ -1,0 +1,115 @@
+-- Delta Executor: Universal 6X Damage Network Duplicator Engine
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Initialize Main GUI Container
+local DeltaDamageGui = Instance.new("ScreenGui")
+DeltaDamageGui.Name = "DeltaDamageMultiplierHUD"
+DeltaDamageGui.Parent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
+
+-- 1. Main Visual Box Setup (Compact Sizing matching the right panel layout)
+local DamageFrame = Instance.new("Frame")
+DamageFrame.Name = "DamageToggleBox"
+DamageFrame.Size = UDim2.new(0, 120, 0, 32)
+DamageFrame.Position = UDim2.new(1, -140, 0.4, 40) -- Placed right below UseTools
+DamageFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+DamageFrame.Active = true
+DamageFrame.Draggable = true 
+DamageFrame.Parent = DeltaDamageGui
+
+local FrameCorner = Instance.new("UICorner")
+FrameCorner.CornerRadius = UDim.new(0, 5)
+FrameCorner.Parent = DamageFrame
+
+local FrameStroke = Instance.new("UIStroke")
+FrameStroke.Thickness = 1.5
+FrameStroke.Color = Color3.fromRGB(80, 80, 80) -- Sleek silver gray outline
+FrameStroke.Parent = DamageFrame
+
+-- 2. Action Display Label
+local DamageText = Instance.new("TextLabel")
+DamageText.Name = "DisplayLabel"
+DamageText.Size = UDim2.new(1, 0, 1, 0)
+DamageText.BackgroundTransparency = 1
+DamageText.Text = "6X DAMAGE OFF" -- Updated label to 6X
+DamageText.TextColor3 = Color3.fromRGB(255, 50, 50)
+DamageText.TextSize = 11
+DamageText.Font = Enum.Font.SourceSansBold
+DamageText.Parent = DamageFrame
+
+-- Invisible overlay touch interface for clean mobile selection
+local InteractionButton = Instance.new("TextButton")
+InteractionButton.Size = UDim2.new(1, 0, 1, 0)
+InteractionButton.BackgroundTransparency = 1
+InteractionButton.Text = ""
+InteractionButton.Parent = DamageFrame
+
+----------------------------------------------------
+-- ADVANCED NETWORK HOOKING (6X DUPLICATOR ENGINE)
+----------------------------------------------------
+local damageScriptActive = false
+
+-- Use Delta's metatable hooking capability to intercept outbound server traffic
+local rawMetatable = getrawmetatable(game)
+local oldNamecall = rawMetatable.__namecall
+setreadonly(rawMetatable, false)
+
+rawMetatable.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    
+    -- If the script is turned on, look for network triggers sent by tools or weapon swings
+    if damageScriptActive and (method == "FireServer" or method == "InvokeServer") then
+        local remoteName = string.lower(self.Name)
+        
+        -- Filter for common combat, hitting, punching, or slashing networks
+        if string.find(remoteName, "hit") or 
+           string.find(remoteName, "damage") or 
+           string.find(remoteName, "swing") or 
+           string.find(remoteName, "attack") or 
+           string.find(remoteName, "punch") or 
+           string.find(remoteName, "weapon") or
+           string.find(remoteName, "combat") then
+            
+            -- Intercepted valid combat network packet. Firing 5 extra times for 6X Total Damage.
+            task.spawn(function()
+                for i = 1, 5 do
+                    task.wait(0.01) -- Small delay spacing to safely pass structure anti-cheats
+                    if method == "FireServer" then
+                        self:FireServer(unpack(args))
+                    elseif method == "InvokeServer" then
+                        self:InvokeServer(unpack(args))
+                    end
+                end
+            end)
+        end
+    end
+    
+    return oldNamecall(self, ...)
+end)
+
+setreadonly(rawMetatable, true)
+
+----------------------------------------------------
+-- INTERACTION SWITCH CONNECTIONS
+----------------------------------------------------
+InteractionButton.MouseButton1Click:Connect(function()
+    damageScriptActive = not damageScriptActive
+    
+    if damageScriptActive then
+        -- ACTIVE STATE: Text changes to bright neon green
+        DamageText.Text = "6X DAMAGE ON"
+        DamageText.TextColor3 = Color3.fromRGB(0, 255, 120)
+        TweenService:Create(FrameStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 255, 120)}):Play()
+        print("Delta Combat Duplicator: Actively multiplying combat packets by 6X.")
+    else
+        -- DISABLED STATE: Returns to muted gray outline
+        DamageText.Text = "6X DAMAGE OFF"
+        DamageText.TextColor3 = Color3.fromRGB(255, 50, 50)
+        TweenService:Create(FrameStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(80, 80, 80)}):Play()
+        print("Delta Combat Duplicator: Disabled.")
+    end
+end)
