@@ -1,0 +1,135 @@
+-- Delta Executor UI + Backend Functional Injection Wrapper (Compact Mobile Version)
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Initialize Main GUI Container
+local DeltaUI = Instance.new("ScreenGui")
+DeltaUI.Name = "DeltaUseToolsSystem"
+DeltaUI.Parent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
+
+-- 1. Main Visual Box Setup (Downsized for mobile layouts)
+local ToolFrame = Instance.new("Frame")
+ToolFrame.Name = "UseToolsBox"
+ToolFrame.Size = UDim2.new(0, 120, 0, 32) -- Scaled down width/height significantly
+ToolFrame.Position = UDim2.new(1, -140, 0.4, 0) -- Adjusted right padding
+ToolFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToolFrame.Active = true
+ToolFrame.Draggable = true
+ToolFrame.Parent = DeltaUI
+
+local ToolCorner = Instance.new("UICorner")
+ToolCorner.CornerRadius = UDim.new(0, 5)
+ToolCorner.Parent = ToolFrame
+
+local ToolStroke = Instance.new("UIStroke")
+ToolStroke.Thickness = 1.5 -- Slightly thinner outline for the smaller frame
+ToolStroke.Color = Color3.fromRGB(255, 50, 50) -- Default: Disabled (Red)
+ToolStroke.Parent = ToolFrame
+
+-- 2. Status Light (Scaled down)
+local StatusDot = Instance.new("Frame")
+StatusDot.Size = UDim2.new(0, 8, 0, 8)
+StatusDot.Position = UDim2.new(0, 8, 0.5, -4) -- Adjusted placement
+StatusDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50) -- Default Red
+StatusDot.Parent = ToolFrame
+
+local DotCorner = Instance.new("UICorner")
+DotCorner.CornerRadius = UDim.new(1, 0)
+DotCorner.Parent = StatusDot
+
+-- 3. Label Text (Scaled down font size)
+local ToolLabel = Instance.new("TextLabel")
+ToolLabel.Size = UDim2.new(1, -45, 1, 0)
+ToolLabel.Position = UDim2.new(0, 22, 0, 0)
+ToolLabel.BackgroundTransparency = 1
+ToolLabel.Text = "UseTools"
+ToolLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToolLabel.TextSize = 13 -- Smaller font to fit neatly inside the boundary
+ToolLabel.Font = Enum.Font.SourceSansItalic
+ToolLabel.TextXAlignment = Enum.TextXAlignment.Left
+ToolLabel.Parent = ToolFrame
+
+-- 4. Dynamic Count Indicator Badge (Scaled down)
+local SlotBadge = Instance.new("TextLabel")
+SlotBadge.Size = UDim2.new(0, 16, 0, 16) -- Compact sizing
+SlotBadge.Position = UDim2.new(1, -22, 0.5, -8)
+SlotBadge.BackgroundColor3 = Color3.fromRGB(150, 0, 180)
+SlotBadge.Text = "0"
+SlotBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+SlotBadge.TextSize = 11 -- Reduced typography size
+SlotBadge.Font = Enum.Font.SourceSansBold
+SlotBadge.Parent = ToolFrame
+
+local BadgeCorner = Instance.new("UICorner")
+BadgeCorner.CornerRadius = UDim.new(0, 3)
+BadgeCorner.Parent = SlotBadge
+
+-- Touch interface layer for mobile configurations
+local InteractionButton = Instance.new("TextButton")
+InteractionButton.Size = UDim2.new(1, 0, 1, 0)
+InteractionButton.BackgroundTransparency = 1
+InteractionButton.Text = ""
+InteractionButton.Parent = ToolFrame
+
+
+----------------------------------------------------
+-- BACKEND EXECUTOR LOGIC ENGINE
+----------------------------------------------------
+local toolsSystemActive = false
+
+RunService.RenderStepped:Connect(function()
+	if not toolsSystemActive then return end
+	
+	local character = LocalPlayer.Character
+	local backpack = LocalPlayer:FindFirstChild("Backpack")
+	
+	if character and backpack then
+		local toolsToActivate = {}
+		
+		for _, item in ipairs(backpack:GetChildren()) do
+			if item:IsA("Tool") then
+				item.Parent = character
+				table.insert(toolsToActivate, item)
+			end
+		end
+		
+		for _, item in ipairs(character:GetChildren()) do
+			if item:IsA("Tool") then
+				table.insert(toolsToActivate, item)
+			end
+		end
+		
+		SlotBadge.Text = tostring(#toolsToActivate)
+		
+		for _, tool in ipairs(toolsToActivate) do
+			tool:Activate()
+		end
+	end
+end)
+
+InteractionButton.MouseButton1Click:Connect(function()
+	toolsSystemActive = not toolsSystemActive
+	
+	if toolsSystemActive then
+		TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 255, 120)}):Play()
+		TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 255, 120)}):Play()
+	else
+		TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 50, 50)}):Play()
+		TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
+		
+		local character = LocalPlayer.Character
+		local backpack = LocalPlayer:FindFirstChild("Backpack")
+		if character and backpack then
+			for _, item in ipairs(character:GetChildren()) do
+				if item:IsA("Tool") then
+					item.Parent = backpack
+				end
+			end
+		end
+		SlotBadge.Text = "0"
+	end
+end)
