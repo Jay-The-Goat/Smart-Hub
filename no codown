@@ -1,0 +1,41 @@
+_G.Detener = false -- Se mudar para "true", o script para
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+
+local function fireServerBoost()
+    local ferramentas = {}
+    local character = player.Character
+    local backpack = player:FindFirstChild("Backpack")
+
+    if character then
+        for _, item in ipairs(character:GetChildren()) do
+            if item:IsA("Tool") then
+                table.insert(ferramentas, item)
+            end
+        end
+    end
+
+    if backpack then
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                table.insert(ferramentas, item)
+            end
+        end
+    end
+
+    for _, ferramenta in ipairs(ferramentas) do
+        for _, remote in ipairs(ferramenta:GetChildren()) do
+            if remote:IsA("RemoteEvent") then
+                remote:FireServer(ferramenta)
+            end
+        end
+    end
+end
+
+_G.Connection = runService.Heartbeat:Connect(function()
+    if _G.Detener then
+        _G.Connection:Disconnect()
+    else
+        fireServerBoost()
+    end
+end)
