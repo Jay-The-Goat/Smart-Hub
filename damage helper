@@ -1,0 +1,57 @@
+-- ADVANCED NETWORK-REPLICATION NO COOLDOWN
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- Configuration (Lower = Faster, but increases disconnect risk)
+local attackInterval = 0.01 
+
+_G.WeaponNoCooldown = true
+
+task.spawn(function()
+    while _G.WeaponNoCooldown do
+        task.wait(attackInterval)
+        
+        local Character = Player.Character
+        if Character then
+            -- Safely locate your currently equipped weapon/tool
+            local Weapon = Character:FindFirstChildOfClass("Tool")
+            
+            if Weapon then
+                -- Step 1: Force standard tool activation trigger
+                pcall(function() Weapon:Activate() end)
+                
+                -- Step 2: Intercept and force-fire the weapon's network communication
+                for _, child in pairs(Weapon:GetDescendants()) do
+                    if child:IsA("RemoteEvent") then
+                        -- Fires weapon trigger data packet directly to the server
+                        child:FireServer() 
+                    elseif child:IsA("RemoteFunction") then
+                        -- Handles instant weapon data return values
+                        pcall(function() child:InvokeServer() end)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Step 3: Speed up weapon animations so they don't lag behind the fast attacks
+task.spawn(function()
+    while _G.WeaponNoCooldown do
+        task.wait(0.5)
+        pcall(function()
+            local Character = Player.Character
+            if Character and Character:FindFirstChild("Humanoid") then
+                local Animator = Character.Humanoid:FindFirstChildOfClass("Animator")
+                if Animator then
+                    Animator.AnimationPlayed:Connect(function(track)
+                        track:AdjustSpeed(25) -- Speeds up the swing/fire animation 25x
+                    end)
+                end
+            end
+        end)
+    end
+end)
+
+print("Universal Weapon No-Cooldown Successfully Loaded!")
