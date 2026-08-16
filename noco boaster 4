@@ -1,0 +1,79 @@
+-- Ultimate 2x Speed Booster (Multi-Threaded Direct Spammer)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- CONFIGURATION
+local ATTACK_KEY = "e"         -- Change to your attack key (must be lower case)
+local BASE_COOLDOWN = 1.0       -- The game's standard server cooldown time in seconds
+local isHoldingKey = false
+
+-- REMOTE SELECTION
+-- Make sure to change "AttackEvent" to match your specific game's remote network string
+local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
+
+local lastAttackTime = 0
+
+-- Feature 2 Logic: Precise Ping Checker
+local function getPingOffset()
+    local latency = Stats.Network.ServerToClientLatency
+    if latency == nil or latency ~= latency then return 0 end
+    return latency / 1000
+end
+
+-- Key Input Trackers
+mouse.KeyDown:Connect(function(key)
+    if key == ATTACK_KEY then
+        isHoldingKey = true
+    end
+end)
+
+mouse.KeyUp:Connect(function(key)
+    if key == ATTACK_KEY then
+        isHoldingKey = false
+    end
+end)
+
+-- The 2x Multi-Threaded Execution Engine
+RunService.Heartbeat:Connect(function()
+    if not isHoldingKey or not AttackRemote then return end
+    
+    local currentTime = os.clock()
+    local currentPing = getPingOffset()
+    
+    -- Target half the normal cooldown duration, adjusted for network delay
+    local targetCooldown = (BASE_COOLDOWN / 2) - currentPing
+    
+    -- Safety minimum barrier to stop instant network throttling kicks
+    if targetCooldown < 0.015 then 
+        targetCooldown = 0.015 
+    end
+    
+    if currentTime - lastAttackTime >= targetCooldown then
+        
+        -- THREAD 1: Instant firing sequence
+        task.spawn(function()
+            if AttackRemote:IsA("RemoteEvent") then
+                AttackRemote:FireServer()
+            elseif AttackRemote:IsA("RemoteFunction") then
+                AttackRemote:InvokeServer()
+            end
+        end)
+        
+        -- THREAD 2: Parallel simultaneous firing sequence (Forces the 2x output)
+        task.spawn(function()
+            if AttackRemote:IsA("RemoteEvent") then
+                AttackRemote:FireServer()
+            elseif AttackRemote:IsA("RemoteFunction") then
+                AttackRemote:InvokeServer()
+            end
+        end)
+        
+        lastAttackTime = currentTime
+    end
+end)
+
+print("[SPEED BOOSTED]: Multi-threaded engine active. Fire rate doubled.")
