@@ -1,0 +1,77 @@
+-- Master Script - Features 1 & 2: Remote Spammer + Adaptive Ping Timing
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats") -- Used to read network ping
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- CONFIGURATION 
+local ATTACK_KEY = "e" 
+local BASE_COOLDOWN = 1.0 -- The game's true server cooldown limit
+local isHoldingKey = false
+
+-- REMOTE IDENTIFICATION 
+local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true) 
+
+local lastAttackTime = 0
+
+-- Function to get precise current ping (in seconds)
+local function getPingOffset()
+    -- ServerToClientLatency returns milliseconds, divide by 1000 for seconds
+    local latency = Stats.Network.ServerToClientLatency
+    
+    -- Safety check to prevent math errors if ping temporarily breaks
+    if latency == nil or latency ~= latency then 
+        return 0 
+    end
+    
+    return latency / 1000
+end
+
+-- Input Listeners
+mouse.KeyDown:Connect(function(key)
+    if key == ATTACK_KEY then
+        isHoldingKey = true
+    end
+end)
+
+mouse.KeyUp:Connect(function(key)
+    if key == ATTACK_KEY then
+        isHoldingKey = false
+    end
+end)
+
+-- Combined Execution Loop
+RunService.Heartbeat:Connect(function()
+    if not isHoldingKey or not AttackRemote then return end
+    
+    local currentTime = os.clock()
+    local currentPing = getPingOffset()
+    
+    -- ADAPTIVE CALCULATION:
+    -- We subtract your ping from the cooldown. If your ping is 50ms, the script fires 
+    -- 50ms "early" on your screen so it travels through the internet and hits the 
+    -- server at exactly 0.00ms remaining on the server's cooldown.
+    local dynamicCooldown = BASE_COOLDOWN - currentPing
+    
+    -- Strict safety cap: Never let it drop below a safe micro-delay to prevent instant bans
+    if dynamicCooldown < 0.02 then 
+        dynamicCooldown = 0.02 
+    end
+    
+    if currentTime - lastAttackTime >= dynamicCooldown then
+        
+        if AttackRemote:IsA("RemoteEvent") then
+            AttackRemote:FireServer()
+        elseif AttackRemote:IsA("RemoteFunction") then
+            task.spawn(function()
+                AttackRemote:InvokeServer() 
+            end)
+        end
+        
+        lastAttackTime = currentTime
+    end
+end)
+
+print("[Optimization Loaded]: Method 2 (Adaptive Ping) integrated successfully.")
