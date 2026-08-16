@@ -1,0 +1,56 @@
+-- Master Script - Feature 1: Direct Remote Spammer
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- CONFIGURATION 
+local ATTACK_KEY = "e" -- Change this to the lower-case key you use to attack
+local BASE_COOLDOWN = 1.0 -- The game's actual base server cooldown in seconds
+local isHoldingKey = false
+
+-- REMOTE IDENTIFICATION 
+-- Replace this with the actual path to your game's attack RemoteEvent or RemoteFunction
+-- Common locations: game.ReplicatedStorage.Remotes.Attack or player.Character.Weapon.RemoteEvent
+local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true) 
+
+local lastAttackTime = 0
+
+-- Detect when you press and release the attack key
+mouse.KeyDown:Connect(function(key)
+    if key == ATTACK_KEY then
+        isHoldingKey = true
+    end
+end)
+
+mouse.KeyUp:Connect(function(key)
+    if key == ATTACK_KEY then
+        isHoldingKey = false
+    end
+end)
+
+-- Frame-perfect execution loop
+RunService.Heartbeat:Connect(function()
+    if not isHoldingKey or not AttackRemote then return end
+    
+    local currentTime = os.clock() -- Super precise microsecond clock
+    
+    -- Check if the standard cooldown window has closed
+    if currentTime - lastAttackTime >= BASE_COOLDOWN then
+        
+        -- Fire the remote directly based on its class type
+        if AttackRemote:IsA("RemoteEvent") then
+            AttackRemote:FireServer() -- Pass game arguments inside here if needed
+        elseif AttackRemote:IsA("RemoteFunction") then
+            -- Use task.spawn so the script doesn't freeze while waiting for the server
+            task.spawn(function()
+                AttackRemote:InvokeServer() 
+            end)
+        end
+        
+        lastAttackTime = currentTime
+    end
+end)
+
+print("[Optimization Loaded]: Method 1 (Remote Hooking) is active.")
