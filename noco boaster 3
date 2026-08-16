@@ -1,0 +1,81 @@
+-- Master Script - Ultimate Speed: Remotes + Adaptive Ping + Memory Spoofing
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- CONFIGURATION 
+local ATTACK_KEY = "e" 
+local BASE_COOLDOWN = 1.0 -- Change to game's actual server cooldown
+local isHoldingKey = false
+
+-- REMOTE IDENTIFICATION 
+local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true) 
+
+local lastAttackTime = 0
+
+-- FEATURE 4: LOCAL MEMORY SPOOFING (DUMP & RESET)
+-- This function forcefully wipes the local script's cooldown timers in game memory
+local function bypassLocalDebounces()
+    -- Safely scan the executor's garbage collection registry
+    for _, value in pairs(getgc(true)) do
+        if type(value) == "table" then
+            -- Forcefully clear common variable names games use to lock your client
+            if rawget(value, "debounce") or rawget(value, "Debounce") then
+                rawset(value, "debounce", false)
+                rawset(value, "Debounce", false)
+            end
+            if rawget(value, "cooldown") or rawget(value, "Cooldown") then
+                rawset(value, "cooldown", 0)
+                rawset(value, "Cooldown", 0)
+            end
+            if rawget(value, "canAttack") or rawget(value, "CanAttack") then
+                rawset(value, "canAttack", true)
+                rawset(value, "CanAttack", true)
+            end
+        end
+    end
+end
+
+-- Feature 2 Helper: Ping Calculator
+local function getPingOffset()
+    local latency = Stats.Network.ServerToClientLatency
+    if latency == nil or latency ~= latency then return 0 end
+    return latency / 1000
+end
+
+-- Input Listeners
+mouse.KeyDown:Connect(function(key)
+    if key == ATTACK_KEY then isHoldingKey = true end
+end)
+
+mouse.KeyUp:Connect(function(key)
+    if key == ATTACK_KEY then isHoldingKey = false end
+end)
+
+-- Execution Loop
+RunService.Heartbeat:Connect(function()
+    if not isHoldingKey or not AttackRemote then return end
+    
+    -- Force local script variables to reset instantly every single frame
+    bypassLocalDebounces()
+    
+    local currentTime = os.clock()
+    local currentPing = getPingOffset()
+    local dynamicCooldown = BASE_COOLDOWN - currentPing
+    
+    if dynamicCooldown < 0.02 then dynamicCooldown = 0.02 end
+    
+    if currentTime - lastAttackTime >= dynamicCooldown then
+        if AttackRemote:IsA("RemoteEvent") then
+            AttackRemote:FireServer()
+        elseif AttackRemote:IsA("RemoteFunction") then
+            task.spawn(function() AttackRemote:InvokeServer() end)
+        end
+        lastAttackTime = currentTime
+    end
+end)
+
+print("[Ultimate Script Loaded]: Remotes, Ping Sync, and Memory Spoofing active.")
