@@ -1,0 +1,195 @@
+-- ============================================================================
+-- ULTIMATE RESPAWN SCRIPT - MAX SPEED EDITION
+-- ============================================================================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+
+_G.RespawnConfig = _G.RespawnConfig or { Active = true }
+
+-- Engine latency tweaks (protected)
+pcall(function()
+    Players.RespawnTime = 0
+    settings().Physics.ThrottleAdjustTime = 0
+    settings().Physics.IsReceiveAgeOfReplication = false
+end)
+
+-- ============================================================================
+-- REMOTE CACHE
+-- ============================================================================
+local RespawnEvents = {}
+local RespawnFunctions = {}
+
+local function cacheRespawnMethods()
+    table.clear(RespawnEvents)
+    table.clear(RespawnFunctions)
+
+    local function search(parent)
+        for _, v in ipairs(parent:GetDescendants()) do
+            if v:IsA("RemoteEvent") then
+                local n = v.Name:lower()
+                if n:find("respawn") or n:find("reset") or n:find("spawn") or n:find("death") or n:find("guide") then
+                    table.insert(RespawnEvents, v)
+                end
+            elseif v:IsA("RemoteFunction") then
+                local n = v.Name:lower()
+                if n:find("respawn") or n:find("reset") or n:find("spawn") or n:find("death") or n:find("guide") then
+                    table.insert(RespawnFunctions, v)
+                end
+            end
+        end
+    end
+
+    pcall(search, ReplicatedStorage)
+    pcall(search, LocalPlayer)
+end
+cacheRespawnMethods()
+
+-- ============================================================================
+-- SOUND SUPPRESSION (single pass, event-driven)
+-- ============================================================================
+local function muteSound(sound)
+    if sound.Volume ~= nil then sound.Volume = 0 end
+    if sound.PlaybackSpeed ~= nil then sound.PlaybackSpeed = 0 end
+    if sound.Stop then sound:Stop() end
+end
+
+-- ============================================================================
+-- CHARACTER PREPARATION (no kill-loop, no ragdoll)
+-- ============================================================================
+local function prepareCharacter(character)
+    if not character then return end
+
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CanCollide = false
+        hrp.Velocity = Vector3.zero
+        hrp.RotVelocity = Vector3.zero
+    end
+
+    local head = character:FindFirstChild("Head")
+    if head then head.CanCollide = false end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.PlatformStand = false
+        humanoid.BreakJointsOnDeath = false
+        humanoid.RequiresNeck = false
+    end
+
+    -- Single descendant scan: mute sounds, zero velocities, enable joints
+    for _, desc in ipairs(character:GetDescendants()) do
+        if desc:IsA("Sound") then
+            muteSound(desc)
+        elseif desc:IsA("BasePart") then
+            desc.Velocity = Vector3.zero
+            desc.RotVelocity = Vector3.zero
+        elseif desc:IsA("Motor6D") or desc:IsA("Weld") then
+            desc.Enabled = true
+        end
+    end
+
+    -- Mute any future sounds instantly
+    character.DescendantAdded:Connect(function(desc)
+        if desc:IsA("Sound") then
+            muteSound(desc)
+        end
+    end)
+end
+
+local function cleanupOnDeath(character)
+    if not character then return end
+
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CanCollide = false
+        hrp.Velocity = Vector3.zero
+        hrp.RotVelocity = Vector3.zero
+    end
+
+    -- Single pass: stop sounds, zero velocities, keep joints enabled
+    for _, desc in ipairs(character:GetDescendants()) do
+        if desc:IsA("Sound") then
+            muteSound(desc)
+        elseif desc:IsA("BasePart") then
+            desc.Velocity = Vector3.zero
+            desc.RotVelocity = Vector3.zero
+        elseif desc:IsA("Motor6D") or desc:IsA("Weld") then
+            desc.Enabled = true
+        end
+    end
+end
+
+-- ============================================================================
+-- INSTANT RESPAWN TRIGGER
+-- ============================================================================
+local function triggerInstantRespawn()
+    if not _G.RespawnConfig.Active then return end
+
+    local character = LocalPlayer.Character
+    if character then
+        cleanupOnDeath(character)
+    end
+
+    -- 1) Force local respawn immediately (fastest possible local path)
+    pcall(function()
+        LocalPlayer:LoadCharacter()
+    end)
+
+    -- 2) Fire cached RemoteEvents after local respawn so they can't delay you
+    for _, remote in ipairs(RespawnEvents) do
+        pcall(function()
+            remote:FireServer()
+        end)
+    end
+
+    -- 3) Invoke RemoteFunctions in a single background thread
+    task.spawn(function()
+        for _, remote in ipairs(RespawnFunctions) do
+            pcall(function()
+                remote:InvokeServer()
+            end)
+        end
+    end)
+end
+
+-- ============================================================================
+-- CHARACTER LIFECYCLE
+-- ============================================================================
+local function connectHumanoid(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(triggerInstantRespawn)
+    else
+        local conn
+        conn = character.ChildAdded:Connect(function(child)
+            if child:IsA("Humanoid") then
+                conn:Disconnect()
+                child.Died:Connect(triggerInstantRespawn)
+            end
+        end)
+    end
+end
+
+local function onCharacterAdded(character)
+    if not _G.RespawnConfig.Active then return end
+
+    prepareCharacter(character)
+    connectHumanoid(character)
+end
+
+-- Manual Respawn Keybind (R)
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe or not _G.RespawnConfig.Active then return end
+    if input.KeyCode == Enum.KeyCode.R and LocalPlayer.Character then
+        triggerInstantRespawn()
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+if LocalPlayer.Character then
+    onCharacterAdded(LocalPlayer.Character)
+end
+
+print("✅ [MAX SPEED] Respawn Script Loaded - Instant + Death Sound Removed")
