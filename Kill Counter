@@ -1,0 +1,361 @@
+-- Delta Executor UI: Multi-Target Named List Tracker (60Hz Direct Engine)
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+local SecureUIFolder = game:GetService("CoreGui") or localPlayer:WaitForChild("PlayerGui")
+
+if SecureUIFolder:FindFirstChild("KillCounterSystemRemake") then
+    SecureUIFolder.KillCounterSystemRemake:Destroy()
+end
+
+-- ==========================================================
+-- 1. REAL-TIME DATA TRACKERS & CONFIGURATION
+-- ==========================================================
+local selectedTargets = {} -- {[Player] = {RowObject = Instance, Connection = RBXScriptConnection}}
+local myDeathCount = 0
+local myConnections = {}
+
+-- Fast tracking hook loop for local player deaths
+local function hookLocalDeathSystem()
+    for _, conn in ipairs(myConnections) do conn:Disconnect() end
+    myConnections = {}
+
+    local function onCharacter(char)
+        local hum = char:WaitForChild("Humanoid", 10)
+        if hum then
+            table.insert(myConnections, hum.Died:Connect(function()
+                myDeathCount = myDeathCount + 1
+                if SecureUIFolder:FindFirstChild("KillCounterSystemRemake") then
+                    SecureUIFolder.KillCounterSystemRemake.KillCounterFrame.MyDeathsValue.Text = tostring(myDeathCount)
+                end
+            end))
+        end
+    end
+
+    table.insert(myConnections, localPlayer.CharacterAdded:Connect(onCharacter))
+    if localPlayer.Character then onCharacter(localPlayer.Character) end
+end
+
+-- ==========================================================
+-- 2. MAIN GUI INTERFACE BUILD (EXACT DESIGN MATCH)
+-- ==========================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KillCounterSystemRemake"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = SecureUIFolder
+
+-- MAIN BOX: Kill Counter Frame (Height bumped to 250 to support the list panel)
+local KillCounterFrame = Instance.new("Frame")
+KillCounterFrame.Name = "KillCounterFrame"
+KillCounterFrame.Size = UDim2.new(0, 330, 0, 250)
+KillCounterFrame.Position = UDim2.new(0.05, 0, 0.2, 0)
+KillCounterFrame.BackgroundColor3 = Color3.fromRGB(56, 24, 17) 
+KillCounterFrame.BorderSizePixel = 0
+KillCounterFrame.Active = true
+KillCounterFrame.Draggable = true
+KillCounterFrame.Parent = ScreenGui
+
+local UICorner1 = Instance.new("UICorner")
+UICorner1.CornerRadius = UDim.new(0, 14)
+UICorner1.Parent = KillCounterFrame
+
+local HeaderLeft = Instance.new("Frame")
+HeaderLeft.Size = UDim2.new(1, 0, 0, 32)
+HeaderLeft.BackgroundColor3 = Color3.fromRGB(43, 17, 12)
+HeaderLeft.BorderSizePixel = 0
+HeaderLeft.Parent = KillCounterFrame
+
+local UICornerHL = Instance.new("UICorner")
+UICornerHL.CornerRadius = UDim.new(0, 14)
+UICornerHL.Parent = HeaderLeft
+
+local IconBox = Instance.new("ImageLabel")
+IconBox.Size = UDim2.new(0, 20, 0, 20)
+IconBox.Position = UDim2.new(0, 10, 0, 6)
+IconBox.BackgroundTransparency = 1
+IconBox.Image = "rbxassetid://6031225818" 
+IconBox.ImageColor3 = Color3.fromRGB(240, 120, 60)
+IconBox.Parent = HeaderLeft
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+TitleLabel.Position = UDim2.new(0, 38, 0, 0)
+TitleLabel.Text = "Kill Counter"
+TitleLabel.TextColor3 = Color3.fromRGB(240, 230, 225)
+TitleLabel.TextSize = 14
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Parent = HeaderLeft
+
+-- FIXED ROW: MY PERSONAL DEATHS (ALWAYS AT TOP)
+local MyDeathsLabel = Instance.new("TextLabel")
+MyDeathsLabel.Size = UDim2.new(0.65, 0, 0, 24)
+MyDeathsLabel.Position = UDim2.new(0, 14, 0, 42)
+MyDeathsLabel.Text = "My Deaths"
+MyDeathsLabel.TextColor3 = Color3.fromRGB(165, 145, 140)
+MyDeathsLabel.TextSize = 13
+MyDeathsLabel.Font = Enum.Font.GothamBold
+MyDeathsLabel.TextXAlignment = Enum.TextXAlignment.Left
+MyDeathsLabel.BackgroundTransparency = 1
+MyDeathsLabel.Parent = KillCounterFrame
+
+local MyDeathsValue = Instance.new("TextLabel")
+MyDeathsValue.Name = "MyDeathsValue"
+MyDeathsValue.Size = UDim2.new(0.25, 0, 0, 24)
+MyDeathsValue.Position = UDim2.new(0.75, -14, 0, 42)
+MyDeathsValue.Text = "0"
+MyDeathsValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+MyDeathsValue.TextSize = 18
+MyDeathsValue.Font = Enum.Font.GothamBold
+MyDeathsValue.TextXAlignment = Enum.TextXAlignment.Right
+MyDeathsValue.BackgroundTransparency = 1
+MyDeathsValue.Parent = KillCounterFrame
+
+-- SCROLLING CONTAINER FOR SELECTED OPPONENT LIVE ROW TILES
+local ActiveTargetsScroller = Instance.new("ScrollingFrame")
+ActiveTargetsScroller.Name = "ActiveTargetsScroller"
+ActiveTargetsScroller.Size = UDim2.new(0.92, 0, 0, 120)
+ActiveTargetsScroller.Position = UDim2.new(0.04, 0, 0, 72)
+ActiveTargetsScroller.BackgroundTransparency = 1
+ActiveTargetsScroller.BorderSizePixel = 0
+ActiveTargetsScroller.ScrollBarThickness = 2
+ActiveTargetsScroller.CanvasSize = UDim2.new(0, 0, 0, 0)
+ActiveTargetsScroller.Parent = KillCounterFrame
+
+local TargetListLayout = Instance.new("UIListLayout")
+TargetListLayout.Padding = UDim.new(0, 4)
+TargetListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TargetListLayout.Parent = ActiveTargetsScroller
+
+-- Reset Button
+local ResetBtn = Instance.new("TextButton")
+ResetBtn.Size = UDim2.new(0.44, 0, 0, 34)
+ResetBtn.Position = UDim2.new(0.04, 0, 0, 202)
+ResetBtn.BackgroundColor3 = Color3.fromRGB(120, 32, 32)
+ResetBtn.Text = "Reset All"
+ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ResetBtn.TextSize = 13
+ResetBtn.Font = Enum.Font.GothamBold
+ResetBtn.Parent = KillCounterFrame
+
+local UICornerR = Instance.new("UICorner")
+UICornerR.CornerRadius = UDim.new(0, 8)
+UICornerR.Parent = ResetBtn
+
+-- Opponents Panel Toggle Button
+local OpponentsBtn = Instance.new("TextButton")
+OpponentsBtn.Size = UDim2.new(0.44, 0, 0, 34)
+OpponentsBtn.Position = UDim2.new(0.52, 0, 0, 202)
+OpponentsBtn.BackgroundColor3 = Color3.fromRGB(165, 58, 22)
+OpponentsBtn.Text = "Opponents"
+OpponentsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpponentsBtn.TextSize = 13
+OpponentsBtn.Font = Enum.Font.GothamBold
+OpponentsBtn.Parent = KillCounterFrame
+
+local UICornerO = Instance.new("UICorner")
+UICornerO.CornerRadius = UDim.new(0, 8)
+UICornerO.Parent = OpponentsBtn
+
+-- ==========================================================
+-- 3. SECONDARY BOX: Select Target Frame
+-- ==========================================================
+local TargetFrame = Instance.new("Frame")
+TargetFrame.Name = "TargetFrame"
+TargetFrame.Size = UDim2.new(0, 260, 0, 250)
+TargetFrame.Position = UDim2.new(0.05, 345, 0.2, 0)
+TargetFrame.BackgroundColor3 = Color3.fromRGB(56, 24, 17)
+TargetFrame.BorderSizePixel = 0
+TargetFrame.Active = true
+TargetFrame.Draggable = true
+TargetFrame.Visible = true 
+TargetFrame.Parent = ScreenGui
+
+local UICorner2 = Instance.new("UICorner")
+UICorner2.CornerRadius = UDim.new(0, 14)
+UICorner2.Parent = TargetFrame
+
+local TargetHeader = Instance.new("Frame")
+TargetHeader.Size = UDim2.new(1, 0, 0, 32)
+TargetHeader.BackgroundColor3 = Color3.fromRGB(43, 17, 12)
+TargetHeader.BorderSizePixel = 0
+TargetHeader.Parent = TargetFrame
+
+local UICornerTH = Instance.new("UICorner")
+UICornerTH.CornerRadius = UDim.new(0, 14)
+UICornerTH.Parent = TargetHeader
+
+local TargetTitle = Instance.new("TextLabel")
+TargetTitle.Size = UDim2.new(0.9, 0, 1, 0)
+TargetTitle.Position = UDim2.new(0, 12, 0, 0)
+TargetTitle.Text = "Select Target"
+TargetTitle.TextColor3 = Color3.fromRGB(240, 230, 225)
+TargetTitle.TextSize = 13
+TargetTitle.Font = Enum.Font.GothamBold
+TargetTitle.TextXAlignment = Enum.TextXAlignment.Left
+TargetTitle.BackgroundTransparency = 1
+TargetTitle.Parent = TargetHeader
+
+local ScrollList = Instance.new("ScrollingFrame")
+ScrollList.Size = UDim2.new(0.92, 0, 0.8, 0)
+ScrollList.Position = UDim2.new(0.04, 0, 0.14, 0)
+ScrollList.BackgroundTransparency = 1
+ScrollList.BorderSizePixel = 0
+ScrollList.ScrollBarThickness = 3
+ScrollList.Parent = TargetFrame
+
+local UIList = Instance.new("UIListLayout")
+UIList.Padding = UDim.new(0, 6)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Parent = ScrollList
+
+OpponentsBtn.MouseButton1Click:Connect(function()
+    TargetFrame.Visible = not TargetFrame.Visible
+end)
+
+-- ==========================================================
+-- 4. LIVE SUB-ROW DESIGN CREATOR & DESTRUCTION ENGINE
+-- ==========================================================
+local function addPlayerToLiveCounter(targetPlayer)
+    if selectedTargets[targetPlayer] then return end
+
+    local count = 0
+    local connections = {}
+
+    -- Create individual row tile layout parameters inside the counter box
+    local TargetRow = Instance.new("Frame")
+    TargetRow.Name = targetPlayer.Name .. "_Row"
+    TargetRow.Size = UDim2.new(1, 0, 0, 24)
+    TargetRow.BackgroundTransparency = 1
+    TargetRow.Parent = ActiveTargetsScroller
+
+    local NameLabel = Instance.new("TextLabel")
+    NameLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    NameLabel.Text = targetPlayer.Name
+    NameLabel.TextColor3 = Color3.fromRGB(240, 220, 215)
+    NameLabel.TextSize = 13
+    NameLabel.Font = Enum.Font.GothamBold
+    NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    NameLabel.BackgroundTransparency = 1
+    NameLabel.Parent = TargetRow
+
+    local ValueLabel = Instance.new("TextLabel")
+    ValueLabel.Size = UDim2.new(0.3, 0, 1, 0)
+    ValueLabel.Position = UDim2.new(0.7, -10, 0, 0)
+    ValueLabel.Text = "0"
+    ValueLabel.TextColor3 = Color3.fromRGB(255, 120, 120)
+    ValueLabel.TextSize = 16
+    ValueLabel.Font = Enum.Font.GothamBold
+    ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    ValueLabel.BackgroundTransparency = 1
+    ValueLabel.Parent = TargetRow
+
+    -- Zero-Delay direct lifestyle tracking sequence
+    local function hookCharacter(char)
+        local hum = char:WaitForChild("Humanoid", 10)
+        if hum then
+            table.insert(connections, hum.Died:Connect(function()
+                count = count + 1
+                ValueLabel.Text = tostring(count)
+            end))
+end
+end
+table.insert(connections, targetPlayer.CharacterAdded:Connect(hookCharacter))
+if targetPlayer.Character then hookCharacter(targetPlayer.Character) end
+-- Store active memory arrays references
+selectedTargets[targetPlayer] = {
+RowObject = TargetRow,
+Connections = connections,
+ResetCounter = function() count = 0 ValueLabel.Text = "0" end
+}
+-- Recalculate Scroll Panel Layout Size Bounds
+local activeRows = 0
+for _ in pairs(selectedTargets) do activeRows = activeRows + 1 end
+ActiveTargetsScroller.CanvasSize = UDim2.new(0, 0, 0, activeRows * 28)
+end
+local function removePlayerFromLiveCounter(targetPlayer)
+local targetData = selectedTargets[targetPlayer]
+if not targetData then return end
+-- Tear down execution logs threads safely
+for _, conn in ipairs(targetData.Connections) do conn:Disconnect() end
+if targetData.RowObject then targetData.RowObject:Destroy() end
+selectedTargets[targetPlayer] = nil
+local activeRows = 0
+for _ in pairs(selectedTargets) do activeRows = activeRows + 1 end
+ActiveTargetsScroller.CanvasSize = UDim2.new(0, 0, 0, activeRows * 28)
+end
+-- Reset button listener clears internal counts
+ResetBtn.MouseButton1Click:Connect(function()
+for _, targetData in pairs(selectedTargets) do
+targetData.ResetCounter()
+end
+end)
+-- ==========================================================
+-- 5. SIDE MENU SELECTION RENDER MODULES
+-- ==========================================================
+local function refreshActiveTargetList()
+for _, item in ipairs(ScrollList:GetChildren()) do
+if item:IsA("TextButton") then item:Destroy() end
+end
+for _, p in ipairs(Players:GetPlayers()) do
+if p ~= localPlayer then
+local Row = Instance.new("TextButton")
+Row.Size = UDim2.new(1, -4, 0, 36)
+Row.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(150, 60, 25) or Color3.fromRGB(68, 30, 20)
+Row.Text = " " .. p.Name
+Row.TextColor3 = Color3.fromRGB(240, 210, 200)
+Row.TextSize = 11
+Row.Font = Enum.Font.Gotham
+Row.TextXAlignment = Enum.TextXAlignment.Left
+Row.Parent = ScrollList
+local UICornerRow = Instance.new("UICorner")
+UICornerRow.CornerRadius = UDim.new(0, 8)
+UICornerRow.Parent = Row
+local InitialCircle = Instance.new("Frame")
+InitialCircle.Size = UDim2.new(0, 18, 0, 18)
+InitialCircle.Position = UDim2.new(0, 8, 0.5, -9)
+InitialCircle.BackgroundColor3 = Color3.fromRGB(220, 110, 50)
+InitialCircle.Parent = Row
+local UICornerCircle = Instance.new("UICorner")
+UICornerCircle.CornerRadius = UDim.new(1, 0)
+UICornerCircle.Parent = InitialCircle
+local LetterLabel = Instance.new("TextLabel")
+LetterLabel.Size = UDim2.new(1, 0, 1, 0)
+LetterLabel.Text = string.upper(string.sub(p.Name, 1, 1))
+LetterLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+LetterLabel.TextSize = 10
+LetterLabel.Font = Enum.Font.GothamBold
+LetterLabel.BackgroundTransparency = 1
+LetterLabel.Parent = InitialCircle
+local GreenDot = Instance.new("Frame")
+GreenDot.Size = UDim2.new(0, 6, 0, 6)
+GreenDot.Position = UDim2.new(0.92, 0, 0.5, -3)
+GreenDot.BackgroundColor3 = Color3.fromRGB(40, 220, 90)
+GreenDot.Parent = Row
+local UICornerDot = Instance.new("UICorner")
+UICornerDot.CornerRadius = UDim.new(1, 0)
+UICornerDot.Parent = GreenDot
+-- Click event logic handler
+Row.MouseButton1Click:Connect(function()
+if selectedTargets[p] then
+removePlayerFromLiveCounter(p)
+Row.BackgroundColor3 = Color3.fromRGB(68, 30, 20)
+else
+addPlayerToLiveCounter(p)
+Row.BackgroundColor3 = Color3.fromRGB(150, 60, 25)
+end
+end)
+end
+end
+end
+-- Safely clear data arrays entries structure if someone unloads or leaves server instance
+Players.PlayerRemoving:Connect(function(player)
+if selectedTargets[player] then
+removePlayerFromLiveCounter(player)
+end
+refreshActiveTargetList()
+end)
+Players.PlayerAdded:Connect(refreshActiveTargetList)
+refreshActiveTargetList()
+hookLocalDeathSystem()
