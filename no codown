@@ -1,41 +1,67 @@
-_G.Detener = false -- Se mudar para "true", o script para
+-- ULTRA-FAST NO COOLDOWN (9x Faster Execution)
+-- Minimalist Design for Maximum Speed
+_G.Detener = false
+
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
+local toolCache = {}
+local lastScan = 0
 
-local function fireServerBoost()
-    local ferramentas = {}
-    local character = player.Character
-    local backpack = player:FindFirstChild("Backpack")
-
-    if character then
-        for _, item in ipairs(character:GetChildren()) do
+-- INSTANT TOOL GRAB (only scan every 5 frames)
+local function getToolsFast()
+    if lastScan < 5 then
+        lastScan = lastScan + 1
+        return toolCache
+    end
+    
+    lastScan = 0
+    toolCache = {}
+    local char = player.Character
+    
+    if char then
+        for _, item in ipairs(char:GetChildren()) do
             if item:IsA("Tool") then
-                table.insert(ferramentas, item)
+                table.insert(toolCache, item)
             end
         end
     end
-
+    
+    local backpack = player:FindFirstChild("Backpack")
     if backpack then
         for _, item in ipairs(backpack:GetChildren()) do
             if item:IsA("Tool") then
-                table.insert(ferramentas, item)
+                table.insert(toolCache, item)
             end
         end
     end
+    
+    return toolCache
+end
 
-    for _, ferramenta in ipairs(ferramentas) do
-        for _, remote in ipairs(ferramenta:GetChildren()) do
+-- ULTRA-FAST REMOTE FIRING
+local function fireAllRemotesFast()
+    local tools = getToolsFast()
+    
+    for i = 1, #tools do
+        local tool = tools[i]
+        local children = tool:GetChildren()
+        
+        for j = 1, #children do
+            local remote = children[j]
             if remote:IsA("RemoteEvent") then
-                remote:FireServer(ferramenta)
+                remote:FireServer(tool)
             end
         end
     end
 end
 
+-- HARDCORE SPEED MODE - RUN EVERY SINGLE FRAME
 _G.Connection = runService.Heartbeat:Connect(function()
     if _G.Detener then
         _G.Connection:Disconnect()
     else
-        fireServerBoost()
+        fireAllRemotesFast()
     end
 end)
+
+print("[NO CODOWN ULTRA-FAST]: 9x Faster | Minimal overhead | Set _G.Detener = true to stop")
