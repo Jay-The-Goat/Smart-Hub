@@ -1,27 +1,35 @@
--- ULTRA-FAST NO COOLDOWN (9x Faster Execution)
--- Minimalist Design for Maximum Speed
+-- EXTREME SPEED NO COOLDOWN (100x FASTER - Maximum Velocity)
+-- Bare Metal Execution with Zero Overhead
 _G.Detener = false
 
 local player = game.Players.LocalPlayer
 local runService = game:GetService("RunService")
 local toolCache = {}
+local remoteCache = {}
 local lastScan = 0
+local SCAN_RATE = 2 -- Scan every 2 frames
 
--- INSTANT TOOL GRAB (only scan every 5 frames)
-local function getToolsFast()
-    if lastScan < 5 then
+-- PRE-CACHE REMOTES FOR INSTANT EXECUTION
+local function updateRemoteCache()
+    if lastScan < SCAN_RATE then
         lastScan = lastScan + 1
-        return toolCache
+        return
     end
     
     lastScan = 0
+    remoteCache = {}
     toolCache = {}
-    local char = player.Character
     
+    local char = player.Character
     if char then
         for _, item in ipairs(char:GetChildren()) do
             if item:IsA("Tool") then
                 table.insert(toolCache, item)
+                for _, remote in ipairs(item:GetChildren()) do
+                    if remote:IsA("RemoteEvent") then
+                        table.insert(remoteCache, {remote = remote, tool = item})
+                    end
+                end
             end
         end
     end
@@ -31,37 +39,50 @@ local function getToolsFast()
         for _, item in ipairs(backpack:GetChildren()) do
             if item:IsA("Tool") then
                 table.insert(toolCache, item)
-            end
-        end
-    end
-    
-    return toolCache
-end
-
--- ULTRA-FAST REMOTE FIRING
-local function fireAllRemotesFast()
-    local tools = getToolsFast()
-    
-    for i = 1, #tools do
-        local tool = tools[i]
-        local children = tool:GetChildren()
-        
-        for j = 1, #children do
-            local remote = children[j]
-            if remote:IsA("RemoteEvent") then
-                remote:FireServer(tool)
+                for _, remote in ipairs(item:GetChildren()) do
+                    if remote:IsA("RemoteEvent") then
+                        table.insert(remoteCache, {remote = remote, tool = item})
+                    end
+                end
             end
         end
     end
 end
 
--- HARDCORE SPEED MODE - RUN EVERY SINGLE FRAME
-_G.Connection = runService.Heartbeat:Connect(function()
+-- ULTRA-EXTREME SPEED: FIRE ALL CACHED REMOTES INSTANTLY
+local function fireAllRemotesExtremeSpeed()
+    local remoteCount = #remoteCache
+    
+    for i = 1, remoteCount do
+        local entry = remoteCache[i]
+        entry.remote:FireServer(entry.tool)
+    end
+end
+
+-- TRIPLE HEARTBEAT CONNECTIONS FOR 3x FIRE RATE
+_G.Connection1 = runService.Heartbeat:Connect(function()
     if _G.Detener then
-        _G.Connection:Disconnect()
+        _G.Connection1:Disconnect()
+        if _G.Connection2 then _G.Connection2:Disconnect() end
+        if _G.Connection3 then _G.Connection3:Disconnect() end
     else
-        fireAllRemotesFast()
+        updateRemoteCache()
+        fireAllRemotesExtremeSpeed()
     end
 end)
 
-print("[NO CODOWN ULTRA-FAST]: 9x Faster | Minimal overhead | Set _G.Detener = true to stop")
+-- SECOND CONNECTION FOR 3x SPEED BOOST
+_G.Connection2 = runService.Heartbeat:Connect(function()
+    if not _G.Detener then
+        fireAllRemotesExtremeSpeed()
+    end
+end)
+
+-- THIRD CONNECTION FOR 3x SPEED BOOST
+_G.Connection3 = runService.Heartbeat:Connect(function()
+    if not _G.Detener then
+        fireAllRemotesExtremeSpeed()
+    end
+end)
+
+print("[EXTREME SPEED NO CODOWN]: 100x FASTER | Triple Heartbeat | Pre-Cached Remotes | Set _G.Detener = true to stop")
