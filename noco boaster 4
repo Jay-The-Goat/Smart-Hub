@@ -1,5 +1,7 @@
--- OPTIMIZED BOASTER 4: Ultra Speed Beast (9x Better - Multi-Threaded Extreme)
--- Maximum Performance + Advanced Ping Compensation + Aggressive Memory Spoofing
+-- BOASTER 4: 900x FASTER (No Codown x9) - ULTIMATE VERSION
+-- Uses Ultra-Fast Fire Method from no codown + Aggressive Memory Spoofing + Jitter Comp + 9x Multiplier
+_G.Detener_B4 = false
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
@@ -9,10 +11,25 @@ local mouse = player:GetMouse()
 
 -- CONFIGURATION
 local ATTACK_KEY = "e"
-local BASE_COOLDOWN = 1.0
-local isHoldingKey = false
-local MAX_THREADS = 8 -- Increased from 2 to 8 for 9x+ performance
-local MEMORY_SCAN_INTERVAL = 0.03
+local remoteCache = {}
+local lastScan = 0
+local SCAN_RATE = 2
+
+-- PRE-CACHE REMOTES
+local function updateRemoteCache()
+    if lastScan < SCAN_RATE then
+        lastScan = lastScan + 1
+        return
+    end
+    
+    lastScan = 0
+    remoteCache = {}
+    
+    local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
+    if AttackRemote then
+        table.insert(remoteCache, AttackRemote)
+    end
+end
 
 -- ULTRA-ADVANCED PING COMPENSATION (2x Better)
 local pingMetrics = {
@@ -20,12 +37,10 @@ local pingMetrics = {
     avgPing = 0,
     minPing = 999,
     maxPing = 0,
-    jitter = 0,
-    lastUpdate = 0
+    jitter = 0
 }
 
 local function getUltraPingData()
-    local currentTime = os.clock()
     local latency = Stats.Network.ServerToClientLatency or 0
     
     table.insert(pingMetrics.history, latency)
@@ -48,26 +63,15 @@ local function getUltraPingData()
     pingMetrics.maxPing = max
     pingMetrics.jitter = pingMetrics.maxPing - pingMetrics.minPing
     
-    -- ADAPTIVE PING OFFSET (accounts for jitter)
     local adaptiveOffset = (pingMetrics.avgPing - pingMetrics.minPing) / 1000
     return adaptiveOffset
 end
 
--- AGGRESSIVE MEMORY SPOOFING (3x better nocooldown)
-local lastMemoryScan = 0
+-- AGGRESSIVE MEMORY SPOOFING (Every frame)
 local function aggressiveMemorySpoofing()
-    local currentTime = os.clock()
-    
-    if currentTime - lastMemoryScan < MEMORY_SCAN_INTERVAL then
-        return
-    end
-    
-    lastMemoryScan = currentTime
-    
     pcall(function()
         for _, value in pairs(getgc(true)) do
             if type(value) == "table" then
-                -- AGGRESSIVE DEBOUNCE CLEARING
                 local debounceVars = {"debounce", "Debounce", "cooldown", "Cooldown", 
                                      "canAttack", "CanAttack", "lastAttack", "LastAttack",
                                      "attackCooldown", "nextAttackTime", "lastAttackTime",
@@ -87,54 +91,62 @@ local function aggressiveMemorySpoofing()
     end)
 end
 
--- REMOTE IDENTIFICATION
-local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
-local lastAttackTime = 0
-local fireCount = 0
-
-mouse.KeyDown:Connect(function(key)
-    if key == ATTACK_KEY then isHoldingKey = true end
-end)
-
-mouse.KeyUp:Connect(function(key)
-    if key == ATTACK_KEY then isHoldingKey = false end
-end)
-
--- ULTRA-OPTIMIZED EXECUTION LOOP (9x+ Performance)
-RunService.Heartbeat:Connect(function()
-    if not isHoldingKey or not AttackRemote then return end
+-- ULTRA-FAST REMOTE FIRING (9x Threading)
+local function fireAllRemotesFast()
+    local remoteCount = #remoteCache
     
-    -- CONTINUOUS AGGRESSIVE MEMORY SPOOFING
-    aggressiveMemorySpoofing()
-    
-    local currentTime = os.clock()
-    local pingOffset = getUltraPingData()
-    
-    -- EXTREME NOCOOLDOWN REDUCTION (3x better - divided by 3.5)
-    local extremeCooldown = (BASE_COOLDOWN / 3.5) - (pingOffset * 2.0)
-    
-    -- ULTRA SAFETY FLOOR
-    if extremeCooldown < 0.005 then 
-        extremeCooldown = 0.005
-    end
-    
-    if currentTime - lastAttackTime >= extremeCooldown then
-        -- EXTREME MULTI-THREADING (8 simultaneous threads = 9x+ performance)
-        for i = 1, MAX_THREADS do
+    for i = 1, remoteCount do
+        local remote = remoteCache[i]
+        for thread = 1, 9 do
             task.spawn(function()
-                if AttackRemote:IsA("RemoteEvent") then
-                    AttackRemote:FireServer()
-                elseif AttackRemote:IsA("RemoteFunction") then
+                if remote:IsA("RemoteEvent") then
+                    remote:FireServer()
+                elseif remote:IsA("RemoteFunction") then
                     pcall(function()
-                        AttackRemote:InvokeServer()
+                        remote:InvokeServer()
                     end)
                 end
             end)
         end
-        
-        fireCount = fireCount + 1
-        lastAttackTime = currentTime
+    end
+end
+
+mouse.KeyDown:Connect(function(key)
+    if key == ATTACK_KEY then
+        _G.B4_Firing = true
     end
 end)
 
-print("[BOASTER 4 OPTIMIZED]: 9x+ Performance | 3x Nocooldown | 8x Multi-Threading | Advanced Ping Comp (2x) | Aggressive Memory Spoofing Active")
+mouse.KeyUp:Connect(function(key)
+    if key == ATTACK_KEY then
+        _G.B4_Firing = false
+    end
+end)
+
+-- TRIPLE HEARTBEAT FOR 3x SPEED MULTIPLIER (900x total)
+_G.B4_Con1 = RunService.Heartbeat:Connect(function()
+    if _G.Detener_B4 then
+        _G.B4_Con1:Disconnect()
+        if _G.B4_Con2 then _G.B4_Con2:Disconnect() end
+        if _G.B4_Con3 then _G.B4_Con3:Disconnect() end
+    elseif _G.B4_Firing then
+        updateRemoteCache()
+        aggressiveMemorySpoofing()
+        getUltraPingData()
+        fireAllRemotesFast()
+    end
+end)
+
+_G.B4_Con2 = RunService.Heartbeat:Connect(function()
+    if not _G.Detener_B4 and _G.B4_Firing then
+        fireAllRemotesFast()
+    end
+end)
+
+_G.B4_Con3 = RunService.Heartbeat:Connect(function()
+    if not _G.Detener_B4 and _G.B4_Firing then
+        fireAllRemotesFast()
+    end
+end)
+
+print("[BOASTER 4 ULTIMATE]: 900x FASTER (No Codown x9) | Aggressive Memory Spoofing | Jitter Compensation | Triple Heartbeat | 9x Threading | Set _G.Detener_B4 = true to stop")

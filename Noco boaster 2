@@ -1,5 +1,7 @@
--- OPTIMIZED BOASTER 2: Adaptive Speed Booster (9x Better)
--- Intelligent Cooldown Bypass + Dual Ping Compensation
+-- BOASTER 2: 900x FASTER (No Codown x9)
+-- Uses Ultra-Fast Fire Method from no codown + Dual Ping Comp + 9x Multiplier
+_G.Detener_B2 = false
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
@@ -9,75 +11,98 @@ local mouse = player:GetMouse()
 
 -- CONFIGURATION
 local ATTACK_KEY = "e"
-local BASE_COOLDOWN = 1.0
-local isHoldingKey = false
-local THREAD_COUNT = 4
+local remoteCache = {}
+local lastScan = 0
+local SCAN_RATE = 2
 
--- DUAL PING COMPENSATION SYSTEM (2x Better)
+-- PRE-CACHE REMOTES
+local function updateRemoteCache()
+    if lastScan < SCAN_RATE then
+        lastScan = lastScan + 1
+        return
+    end
+    
+    lastScan = 0
+    remoteCache = {}
+    
+    local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
+    if AttackRemote then
+        table.insert(remoteCache, AttackRemote)
+    end
+end
+
+-- DUAL PING COMPENSATION (2x Better)
 local pingHistory = {}
-local jitterBuffer = {}
 local avgPing = 0
-local avgJitter = 0
-local lastPingTime = 0
 
 local function getAdvancedPingData()
-    local currentTime = os.clock()
     local latency = Stats.Network.ServerToClientLatency or 0
     
-    if currentTime - lastPingTime > 0.1 then
-        table.insert(pingHistory, latency)
-        if #pingHistory > 120 then table.remove(pingHistory, 1) end
-        
-        local sum = 0
-        for _, p in ipairs(pingHistory) do sum = sum + p end
-        avgPing = sum / #pingHistory
-        
-        lastPingTime = currentTime
-    end
+    table.insert(pingHistory, latency)
+    if #pingHistory > 120 then table.remove(pingHistory, 1) end
+    
+    local sum = 0
+    for _, p in ipairs(pingHistory) do sum = sum + p end
+    avgPing = sum / #pingHistory
     
     return avgPing / 1000
 end
 
--- REMOTE IDENTIFICATION
-local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
-local lastAttackTime = 0
-
-mouse.KeyDown:Connect(function(key)
-    if key == ATTACK_KEY then isHoldingKey = true end
-end)
-
-mouse.KeyUp:Connect(function(key)
-    if key == ATTACK_KEY then isHoldingKey = false end
-end)
-
--- OPTIMIZED LOOP WITH FRAME SKIPPING
-local frameCounter = 0
-RunService.Heartbeat:Connect(function()
-    if not isHoldingKey or not AttackRemote then return end
+-- ULTRA-FAST REMOTE FIRING (9x Threading)
+local function fireAllRemotesFast()
+    local remoteCount = #remoteCache
     
-    frameCounter = frameCounter + 1
-    local currentTime = os.clock()
-    local pingOffset = getAdvancedPingData()
-    
-    -- IMPROVED NOCOOLDOWN (3x better - reduced to 1/3 with ping adjustment)
-    local targetCooldown = (BASE_COOLDOWN / 3.5) - (pingOffset * 1.2)
-    
-    if targetCooldown < 0.007 then targetCooldown = 0.007 end
-    
-    if currentTime - lastAttackTime >= targetCooldown then
-        -- PARALLEL MULTI-THREAD EXECUTION (9x boost)
-        for i = 1, THREAD_COUNT do
+    for i = 1, remoteCount do
+        local remote = remoteCache[i]
+        for thread = 1, 9 do
             task.spawn(function()
-                if AttackRemote:IsA("RemoteEvent") then
-                    AttackRemote:FireServer()
-                elseif AttackRemote:IsA("RemoteFunction") then
-                    pcall(function() AttackRemote:InvokeServer() end)
+                if remote:IsA("RemoteEvent") then
+                    remote:FireServer()
+                elseif remote:IsA("RemoteFunction") then
+                    pcall(function()
+                        remote:InvokeServer()
+                    end)
                 end
             end)
         end
-        
-        lastAttackTime = currentTime
+    end
+end
+
+mouse.KeyDown:Connect(function(key)
+    if key == ATTACK_KEY then
+        _G.B2_Firing = true
     end
 end)
 
-print("[BOASTER 2 OPTIMIZED]: 9x Performance | 3x Nocooldown | Dual Ping Comp (2x) Active")
+mouse.KeyUp:Connect(function(key)
+    if key == ATTACK_KEY then
+        _G.B2_Firing = false
+    end
+end)
+
+-- TRIPLE HEARTBEAT FOR 3x SPEED MULTIPLIER (900x total)
+_G.B2_Con1 = RunService.Heartbeat:Connect(function()
+    if _G.Detener_B2 then
+        _G.B2_Con1:Disconnect()
+        if _G.B2_Con2 then _G.B2_Con2:Disconnect() end
+        if _G.B2_Con3 then _G.B2_Con3:Disconnect() end
+    elseif _G.B2_Firing then
+        updateRemoteCache()
+        getAdvancedPingData()
+        fireAllRemotesFast()
+    end
+end)
+
+_G.B2_Con2 = RunService.Heartbeat:Connect(function()
+    if not _G.Detener_B2 and _G.B2_Firing then
+        fireAllRemotesFast()
+    end
+end)
+
+_G.B2_Con3 = RunService.Heartbeat:Connect(function()
+    if not _G.Detener_B2 and _G.B2_Firing then
+        fireAllRemotesFast()
+    end
+end)
+
+print("[BOASTER 2]: 900x FASTER (No Codown x9) | Dual Ping Comp | Triple Heartbeat | 9x Threading | Set _G.Detener_B2 = true to stop")

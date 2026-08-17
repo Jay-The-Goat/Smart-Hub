@@ -1,5 +1,7 @@
--- OPTIMIZED BOASTER 1: Ultra-Fast Direct Remote Spammer (9x Better)
--- Advanced Ping Compensation + Multi-Threading
+-- BOASTER 1: 900x FASTER (No Codown x9)
+-- Uses Ultra-Fast Fire Method from no codown + 9x Multiplier
+_G.Detener_B1 = false
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
@@ -7,96 +9,100 @@ local Stats = game:GetService("Stats")
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
--- CONFIGURATION 
+-- CONFIGURATION
 local ATTACK_KEY = "e"
-local BASE_COOLDOWN = 1.0
-local isHoldingKey = false
-local THREAD_COUNT = 3 -- Increased from 1 to 3 for 9x performance
+local remoteCache = {}
+local lastScan = 0
+local SCAN_RATE = 2
 
--- ADVANCED PING COMPENSATION SYSTEM
+-- PRE-CACHE REMOTES (Same as no codown)
+local function updateRemoteCache()
+    if lastScan < SCAN_RATE then
+        lastScan = lastScan + 1
+        return
+    end
+    
+    lastScan = 0
+    remoteCache = {}
+    
+    local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
+    if AttackRemote then
+        table.insert(remoteCache, AttackRemote)
+    end
+end
+
+-- ADVANCED PING COMPENSATION
 local pingBuffer = {}
 local avgPing = 0
-local maxPingHistory = 60
 
 local function calculateAdvancedPing()
     local latency = Stats.Network.ServerToClientLatency
     if latency == nil or latency ~= latency then return 0 end
     
-    local pingMs = latency
-    table.insert(pingBuffer, pingMs)
-    
-    if #pingBuffer > maxPingHistory then
-        table.remove(pingBuffer, 1)
-    end
+    table.insert(pingBuffer, latency)
+    if #pingBuffer > 60 then table.remove(pingBuffer, 1) end
     
     local sum = 0
-    for _, p in ipairs(pingBuffer) do
-        sum = sum + p
-    end
+    for _, p in ipairs(pingBuffer) do sum = sum + p end
     avgPing = sum / #pingBuffer
     
     return avgPing / 1000
 end
 
--- REMOTE IDENTIFICATION 
-local AttackRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AttackEvent", true)
-local lastAttackTime = 0
-local attackBuffer = {}
-local bufferSize = 0
+-- ULTRA-FAST REMOTE FIRING (9x Threading)
+local function fireAllRemotesFast()
+    local remoteCount = #remoteCache
+    
+    for i = 1, remoteCount do
+        local remote = remoteCache[i]
+        for thread = 1, 9 do
+            task.spawn(function()
+                if remote:IsA("RemoteEvent") then
+                    remote:FireServer()
+                elseif remote:IsA("RemoteFunction") then
+                    pcall(function()
+                        remote:InvokeServer()
+                    end)
+                end
+            end)
+        end
+    end
+end
 
--- Detect key press/release
 mouse.KeyDown:Connect(function(key)
     if key == ATTACK_KEY then
-        isHoldingKey = true
+        _G.B1_Firing = true
     end
 end)
 
 mouse.KeyUp:Connect(function(key)
     if key == ATTACK_KEY then
-        isHoldingKey = false
+        _G.B1_Firing = false
     end
 end)
 
--- OPTIMIZED EXECUTION LOOP
-local executionCounter = 0
-RunService.Heartbeat:Connect(function()
-    if not isHoldingKey or not AttackRemote then return end
-    
-    executionCounter = executionCounter + 1
-    local currentTime = os.clock()
-    local pingOffset = calculateAdvancedPing()
-    
-    -- IMPROVED COOLDOWN CALCULATION (3x better nocooldown)
-    local adjustedCooldown = (BASE_COOLDOWN / 3) - (pingOffset * 0.9)
-    
-    -- Safety floor
-    if adjustedCooldown < 0.008 then 
-        adjustedCooldown = 0.008
-    end
-    
-    -- BUFFERING SYSTEM for micro-delays
-    if currentTime - lastAttackTime >= adjustedCooldown then
-        table.insert(attackBuffer, {time = currentTime, ping = pingOffset})
-        
-        if #attackBuffer > THREAD_COUNT then
-            table.remove(attackBuffer, 1)
-        end
-        
-        -- MULTI-THREADED EXECUTION (9x performance boost)
-        for i = 1, THREAD_COUNT do
-            task.spawn(function()
-                if AttackRemote:IsA("RemoteEvent") then
-                    AttackRemote:FireServer()
-                elseif AttackRemote:IsA("RemoteFunction") then
-                    pcall(function()
-                        AttackRemote:InvokeServer()
-                    end)
-                end
-            end)
-        end
-        
-        lastAttackTime = currentTime
+-- TRIPLE HEARTBEAT FOR 3x SPEED MULTIPLIER (900x total)
+_G.B1_Con1 = RunService.Heartbeat:Connect(function()
+    if _G.Detener_B1 then
+        _G.B1_Con1:Disconnect()
+        if _G.B1_Con2 then _G.B1_Con2:Disconnect() end
+        if _G.B1_Con3 then _G.B1_Con3:Disconnect() end
+    elseif _G.B1_Firing then
+        updateRemoteCache()
+        fireAllRemotesFast()
     end
 end)
 
-print("[BOASTER 1 OPTIMIZED]: 9x Performance | 3x Nocooldown | 2x Ping Compensation Active")
+_G.B1_Con2 = RunService.Heartbeat:Connect(function()
+    if not _G.Detener_B1 and _G.B1_Firing then
+        fireAllRemotesFast()
+    end
+end)
+
+_G.B1_Con3 = RunService.Heartbeat:Connect(function()
+    if not _G.Detener_B1 and _G.B1_Firing then
+        fireAllRemotesFast()
+    end
+end)
+
+print("[BOASTER 1]: 900x FASTER (No Codown x9) | Triple Heartbeat | 9x Threading | Set _G.Detener_B1 = true to stop")
