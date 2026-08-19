@@ -45,7 +45,12 @@ local function hookSpawn()
 		end)
 	end
 end
-
+local function fastWait() 
+    return RunService.PostSimulation:Wait() 
+end
+local function instantSpawn(_, func) 
+    task.spawn(func or _) 
+end
 -- Apply hooks
 hookWait()
 hookTaskWait()
