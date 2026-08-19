@@ -45,12 +45,26 @@ local function hookSpawn()
 		end)
 	end
 end 
-hookfunction(wait, function()
-    return 0
-end)
-hookfunction(task.wait, function()
-    return
-end)
+local function hookWaitInstant()
+	if hookfunction and typeof(hookfunction) == "function" then
+		pcall(function()
+			hookfunction(wait, function()
+				return 0
+			end)
+		end)
+	end
+end
+
+local function hookTaskWaitInstant()
+	if hookfunction and typeof(hookfunction) == "function" then
+		pcall(function()
+			hookfunction(task.wait, function()
+				return
+			end)
+		end)
+	end
+end
+
 -- Apply hooks
 hookWait()
 hookTaskWait()
