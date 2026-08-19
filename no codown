@@ -1,10 +1,10 @@
--- TFL No Cooldown
+-- UC No Cooldown
 -- Instant execution hooks for maximum speed
 
 local RunService = game:GetService("RunService")
 
 --================================================
--- TFL GLOBAL COOLDOWN BREAKER
+-- UC GLOBAL COOLDOWN BREAKER
 --================================================
 local function hookWait()
 	if hookfunction and typeof(hookfunction) == "function" then
@@ -52,4 +52,4 @@ hookTaskWait()
 hookDelay()
 hookSpawn()
 
-print("⚡ TFL No Cooldown Running")
+print("⚡ UC No Cooldown Running")
