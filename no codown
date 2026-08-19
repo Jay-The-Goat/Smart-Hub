@@ -45,11 +45,15 @@ local function hookSpawn()
 		end)
 	end
 end 
-
+hookfunction(wait, function()
+    return 0
+end)
+hookfunction(task.wait, function()
+    return
+end)
 -- Apply hooks
 hookWait()
 hookTaskWait()
 hookDelay()
 hookSpawn()
-
-print("⚡ UC No Cooldown Running")
+print("⚡ UC No Cooldown Running")hookfunction(wait, function()
