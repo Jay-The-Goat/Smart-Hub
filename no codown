@@ -45,16 +45,8 @@ local function hookSpawn()
 		end)
 	end
 end 
-local function hookWaitInstant()
-	if hookfunction and typeof(hookfunction) == "function" then
-		pcall(function()
-			hookfunction(wait, function()
-				return 0
-			end)
-		end)
-	end
-end
 
+-- 1 NEW ADDITION: Bypasses frame timing constraints safely
 local function hookTaskWaitInstant()
 	if hookfunction and typeof(hookfunction) == "function" then
 		pcall(function()
@@ -70,4 +62,6 @@ hookWait()
 hookTaskWait()
 hookDelay()
 hookSpawn()
-print("⚡ UC No Cooldown Running")hookfunction(wait, function()
+hookTaskWaitInstant() -- Applies the instant speed update
+
+print("⚡ UC No Cooldown Running")
