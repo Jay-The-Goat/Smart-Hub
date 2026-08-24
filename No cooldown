@@ -1,67 +1,41 @@
--- UC No Cooldown
--- Instant execution hooks for maximum speed
-
-local RunService = game:GetService("RunService")
-
---================================================
--- UC GLOBAL COOLDOWN BREAKER
---================================================
-local function hookWait()
-	if hookfunction and typeof(hookfunction) == "function" then
-		pcall(function()
-			hookfunction(wait, function()
-				return RunService.PostSimulation:Wait()
-			end)
-		end)
-	end
+-- UC No Cooldown (Instant & Lag-Free Global Edition)
+if not hookfunction or typeof(hookfunction) ~= "function" then 
+    return print("❌ Executor does not support hookfunction") 
 end
 
-local function hookTaskWait()
-	if hookfunction and typeof(hookfunction) == "function" then
-		pcall(function()
-			hookfunction(task.wait, function()
-				return RunService.PostSimulation:Wait()
-			end)
-		end)
-	end
-end
+-- Hook task.wait globally
+local oldTaskWait
+oldTaskWait = hookfunction(task.wait, function(duration)
+    -- If it's a short cooldown wait, bypass time entirely via instant micro-step resumption
+    if not duration or duration <= 0.5 then
+        task.defer(coroutine.running())
+        return coroutine.yield()
+    end
+    return oldTaskWait(duration) -- Let structural long waits pass safely
+end)
 
-local function hookDelay()
-	if hookfunction and typeof(hookfunction) == "function" then
-		pcall(function()
-			hookfunction(delay, function(_,func)
-				task.spawn(func)
-			end)
-		end)
-	end
-end
+-- Hook legacy wait globally
+local oldWait
+oldWait = hookfunction(wait, function(duration)
+    if not duration or duration <= 0.5 then
+        task.defer(coroutine.running())
+        return coroutine.yield()
+    end
+    return oldWait(duration)
+end)
 
-local function hookSpawn()
-	if hookfunction and typeof(hookfunction) == "function" then
-		pcall(function()
-			hookfunction(spawn, function(func)
-				task.spawn(func)
-			end)
-		end)
-	end
-end 
+-- Hook legacy delay for instant fire
+pcall(function()
+    hookfunction(delay, function(_, func)
+        task.spawn(func)
+    end)
+end)
 
--- 1 NEW ADDITION: Bypasses frame timing constraints safely
-local function hookTaskWaitInstant()
-	if hookfunction and typeof(hookfunction) == "function" then
-		pcall(function()
-			hookfunction(task.wait, function()
-				return
-			end)
-		end)
-	end
-end
+-- Hook legacy spawn for instant fire
+pcall(function()
+    hookfunction(spawn, function(func)
+        task.spawn(func)
+    end)
+end)
 
--- Apply hooks
-hookWait()
-hookTaskWait()
-hookDelay()
-hookSpawn()
-hookTaskWaitInstant() -- Applies the instant speed update
-
-print("⚡ UC No Cooldown Running")
+print("⚡ UC Pure No-Cooldown Running (Fast & Fluid)")
