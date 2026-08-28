@@ -1,41 +1,54 @@
--- UC No Cooldown (Instant & Lag-Free Global Edition)
+-- UC No Cooldown (Max-Speed Lag-Isolated Edition)
 if not hookfunction or typeof(hookfunction) ~= "function" then 
     return print("❌ Executor does not support hookfunction") 
 end
 
--- Hook task.wait globally
+local debug_info = debug.info
+
+-- Hook task.wait globally with instant resumption
 local oldTaskWait
 oldTaskWait = hookfunction(task.wait, function(duration)
-    -- If it's a short cooldown wait, bypass time entirely via instant micro-step resumption
     if not duration or duration <= 0.5 then
+        -- Isolate Roblox engine scripts so they don't drag down execution speed
+        local source = debug_info(2, "s")
+        if source and (source:find("RobloxGui") or source:find("CoreScript")) then
+            return oldTaskWait(duration)
+        end
+        
+        -- Exact same instant-resume mechanic from your original script
         task.defer(coroutine.running())
         return coroutine.yield()
     end
-    return oldTaskWait(duration) -- Let structural long waits pass safely
+    return oldTaskWait(duration)
 end)
 
--- Hook legacy wait globally
+-- Hook legacy wait globally with identical speed mechanics
 local oldWait
 oldWait = hookfunction(wait, function(duration)
     if not duration or duration <= 0.5 then
+        local source = debug_info(2, "s")
+        if source and (source:find("RobloxGui") or source:find("CoreScript")) then
+            return oldWait(duration)
+        end
+        
         task.defer(coroutine.running())
         return coroutine.yield()
     end
     return oldWait(duration)
 end)
 
--- Hook legacy delay for instant fire
+-- Hook legacy delay for absolute instant fire
 pcall(function()
     hookfunction(delay, function(_, func)
         task.spawn(func)
     end)
 end)
 
--- Hook legacy spawn for instant fire
+-- Hook legacy spawn for absolute instant fire
 pcall(function()
     hookfunction(spawn, function(func)
         task.spawn(func)
     end)
 end)
 
-print("⚡ UC Pure No-Cooldown Running (Fast & Fluid)")
+print("⚡ UC Max-Speed No-Cooldown Running (Pure Optimization)")
