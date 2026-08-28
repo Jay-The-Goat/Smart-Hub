@@ -1,28 +1,48 @@
--- UC No Cooldown (Max-Speed Lag-Isolated Edition)
+-- UC No Cooldown (Absolute 0-Lag & Visual Purge Edition)
 if not hookfunction or typeof(hookfunction) ~= "function" then 
     return print("❌ Executor does not support hookfunction") 
 end
 
 local debug_info = debug.info
+local game = game
+local workspace = game:GetService("Workspace")
+local lighting = game:GetService("Lighting")
 
--- Hook task.wait globally with instant resumption
+-- 1. THE ULTIMATE LAG PURGE: Intercept and delete visual/audio spam instantly
+local oldNewInstance
+oldNewInstance = hookfunction(Instance.new, function(className, parent)
+    -- Block performance-heavy objects created by spammed weapon loops
+    if className == "ParticleEmitter" or className == "Trail" or className == "Explosion" or className == "Sound" or className == "Smoke" or className == "Sparkles" then
+        -- Return a dummy object or completely bypass creation to save CPU/GPU cycles
+        local dummy = oldNewInstance("Folder")
+        task.delay(0, function() dummy:Destroy() end)
+        return dummy
+    end
+    return oldNewInstance(className, parent)
+end)
+
+-- Nuke common projectile folders/debris structures that games use to dump spammed skills
+pcall(function()
+    if workspace:FindFirstChild("Debris") then workspace.Debris:ClearAllChildren() end
+    if workspace:FindFirstChild("Effects") then workspace.Effects:ClearAllChildren() end
+    if workspace:FindFirstChild("Projectiles") then workspace.Projectiles:ClearAllChildren() end
+end)
+
+-- 2. KEEP MAX INSTANT SPEED: Hook task.wait globally with source filtration
 local oldTaskWait
 oldTaskWait = hookfunction(task.wait, function(duration)
     if not duration or duration <= 0.5 then
-        -- Isolate Roblox engine scripts so they don't drag down execution speed
         local source = debug_info(2, "s")
         if source and (source:find("RobloxGui") or source:find("CoreScript")) then
             return oldTaskWait(duration)
         end
-        
-        -- Exact same instant-resume mechanic from your original script
         task.defer(coroutine.running())
         return coroutine.yield()
     end
     return oldTaskWait(duration)
 end)
 
--- Hook legacy wait globally with identical speed mechanics
+-- Hook legacy wait globally with source filtration
 local oldWait
 oldWait = hookfunction(wait, function(duration)
     if not duration or duration <= 0.5 then
@@ -30,7 +50,6 @@ oldWait = hookfunction(wait, function(duration)
         if source and (source:find("RobloxGui") or source:find("CoreScript")) then
             return oldWait(duration)
         end
-        
         task.defer(coroutine.running())
         return coroutine.yield()
     end
@@ -51,4 +70,4 @@ pcall(function()
     end)
 end)
 
-print("⚡ UC Max-Speed No-Cooldown Running (Pure Optimization)")
+print("⚡ UC Absolute 0-Lag No-Cooldown Engaged (Visuals Purged)")
