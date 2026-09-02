@@ -2,6 +2,7 @@
   LIGHTWEIGHT NO COOLDOWN WITH DAMAGE - Zero Lag
   - Cooldown bypass via hooks
   - Tool activation for damage
+  - Works with loopbring and manual tool use
   - Minimal overhead
 ]]
 
@@ -32,7 +33,7 @@ hookfunction(spawn, function(func)
 	if func then task.spawn(func) end
 end)
 
--- LIGHTWEIGHT DAMAGE ACTIVATION
+-- DAMAGE ACTIVATION - Works with loopbring and tool use
 local lastActivate = 0
 RunService.PreSimulation:Connect(function()
 	if not LocalPlayer.Character then return end
@@ -41,19 +42,12 @@ RunService.PreSimulation:Connect(function()
 	if now - lastActivate < 0.001 then return end
 	lastActivate = now
 	
-	-- Activate all tools in character
-	for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
-		if tool:IsA("Tool") then
-			pcall(function() tool:Activate() end)
-		end
-	end
-	
-	-- Touch assist to closest player
 	local char = LocalPlayer.Character
 	local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
 	if not root then return end
 	
-	local closest, bestDist = nil, 15
+	-- Get all players within range (for loopbring compatibility)
+	local closest, bestDist = nil, 100
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer then
 			local pChar = plr.Character
@@ -70,16 +64,28 @@ RunService.PreSimulation:Connect(function()
 		end
 	end
 	
-	if closest then
-		for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
+	-- Activate all tools and fire touch interest
+	if char then
+		for _, tool in ipairs(char:GetChildren()) do
 			if tool:IsA("Tool") then
+				-- Activate tool (handles manual use + auto activation)
+				pcall(function() tool:Activate() end)
+				
+				-- Fire touch on all nearby players (loopbring + normal)
 				local handle = tool:FindFirstChild("Handle")
 				if handle then
-					local targetParts = {closest:FindFirstChild("HumanoidRootPart"), closest:FindFirstChild("Torso"), closest:FindFirstChild("Head")}
-					for _, p in ipairs(targetParts) do
-						if p then
-							pcall(firetouchinterest, handle, p, 0)
-							pcall(firetouchinterest, handle, p, 1)
+					for _, plr in ipairs(Players:GetPlayers()) do
+						if plr ~= LocalPlayer then
+							local pChar = plr.Character
+							if pChar then
+								local targetParts = {pChar:FindFirstChild("HumanoidRootPart"), pChar:FindFirstChild("UpperTorso"), pChar:FindFirstChild("Torso"), pChar:FindFirstChild("Head")}
+								for _, p in ipairs(targetParts) do
+									if p then
+										pcall(firetouchinterest, handle, p, 0)
+										pcall(firetouchinterest, handle, p, 1)
+									end
+								end
+							end
 						end
 					end
 				end
@@ -88,4 +94,4 @@ RunService.PreSimulation:Connect(function()
 	end
 end)
 
-print("✅ Lightweight No Cooldown with Damage - Zero Lag")
+print("✅ Lightweight No Cooldown with Damage - Works with loopbring, Zero Lag")
