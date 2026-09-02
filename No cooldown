@@ -1,57 +1,323 @@
--- iOS Delta No Cooldown - SIMPLE & DIRECT
+--[[
+  TFL Use Tools – Automatic, No GUI, Hooked No Cooldown
+  - No buttons, no hotkeys – runs immediately
+  - No Cooldown via hooking wait/task.wait/delay/spawn
+  - Fastest possible activation (every frame)
+]]
+
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
 
--- 1. DISABLE ALL HUMANOID COOLDOWNS
-Humanoid.WalkSpeed = 16
-Humanoid.JumpPower = 50
+--================================================
+-- ⚡ GLOBAL COOLDOWN BREAKER (Original Power)
+--================================================
+hookfunction(wait, function()
+	return RunService.PostSimulation:Wait()
+end)
 
--- 2. INTERCEPT REMOTE CALLS (most games use RemoteEvents for cooldowns)
-local function bypassRemotes(parent)
-    for _, obj in pairs(parent:GetChildren()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            -- Fire immediately without waiting
-            if obj:IsA("RemoteEvent") then
-                local mt = getmetatable(obj)
-                if mt then
-                    mt.__index = function(self, key)
-                        if key == "FireServer" then
-                            return function(...) end
-                        end
-                        return rawget(mt, key)
+hookfunction(task.wait, function()
+	return RunService.PostSimulation:Wait()
+end)
+
+hookfunction(delay, function(_,func)
+	task.spawn(func)
+end)
+
+hookfunction(spawn, function(func)
+	task.spawn(func)
+end)
+
+print("⚡ No Cooldown Running")
+
+-- ================== CONFIG ==================
+local Config = {
+    Enabled = true,
+    MaxTools = 5,
+    TouchAssistRange = 14
+}
+
+-- ================== CORE STATE ==================
+if _G.__TFLUseToolsCleanup then pcall(_G.__TFLUseToolsCleanup) end
+
+local connections = {}
+local state = {
+    active = true,
+    toolsCache = {},
+    toolWelds = {},
+    currentChar = nil,
+    currentRoot = nil,
+    lastPulse = 0,
+    reequipToken = 0
+}
+
+local function disconnectAll(list)
+    for _,c in ipairs(list) do if c and c.Connected then c:Disconnect() end end
+    table.clear(list)
+end
+
+-- ================== TOOL LOGIC ==================
+local function getHRP(c)
+    return c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso"))
+end
+local function getRightHand(c) return c and (c:FindFirstChild("RightHand") or c:FindFirstChild("Right Arm")) end
+local function getLeftHand(c) return c and (c:FindFirstChild("LeftHand") or c:FindFirstChild("Left Arm")) end
+
+local function getToolTouchPart(tool)
+    local h = tool:FindFirstChild("Handle")
+    if h and h:IsA("BasePart") then return h end
+    for _,obj in ipairs(tool:GetDescendants()) do
+        if obj:IsA("TouchTransmitter") and obj.Parent and obj.Parent:IsA("BasePart") then
+            return obj.Parent
+        end
+    end
+    return nil
+end
+
+local function removeToolWeld(tool)
+    local w = state.toolWelds[tool]
+    if w and w.Parent then w:Destroy() end
+    state.toolWelds[tool] = nil
+end
+
+local function applyToolWelds()
+    if not state.currentChar or not state.active then return end
+    local char = state.currentChar
+    local rHand = getRightHand(char)
+    local lHand = getLeftHand(char)
+    if not rHand or not lHand then return end
+    local rTools, lTools = {}, {}
+    for _,tool in ipairs(state.toolsCache) do
+        local handle = tool and tool:FindFirstChild("Handle")
+        if handle and handle:IsA("BasePart") then
+            if tool.Name and tool.Name:lower():find("axe") then
+                table.insert(lTools,tool)
+            else
+                table.insert(rTools,tool)
+            end
+        end
+    end
+    for i,tool in ipairs(rTools) do
+        local handle = tool:FindFirstChild("Handle")
+        if handle then
+            removeToolWeld(tool)
+            local weld = Instance.new("Motor6D")
+            weld.Name = "TFL_ToolWeld"
+            weld.Part0 = handle
+            weld.Part1 = rHand
+            weld.C0 = CFrame.new(-tool.GripPos.X, -tool.GripPos.Y, -tool.GripPos.Z)
+            weld.C1 = tool.Grip * CFrame.fromAxisAngle(Vector3.new(0,1,0), (i-1)*0.3)
+            weld.Parent = handle
+            state.toolWelds[tool] = weld
+            if not handle:GetAttribute("TFL_WasCanCollide") then
+                handle:SetAttribute("TFL_WasCanCollide", handle.CanCollide)
+            end
+            handle.CanCollide = false
+            handle.Massless = true
+        end
+    end
+    for i,tool in ipairs(lTools) do
+        local handle = tool:FindFirstChild("Handle")
+        if handle then
+            removeToolWeld(tool)
+            local weld = Instance.new("Motor6D")
+            weld.Name = "TFL_ToolWeld"
+            weld.Part0 = handle
+            weld.Part1 = lHand
+            weld.C0 = CFrame.new(-tool.GripPos.X, -tool.GripPos.Y, -tool.GripPos.Z)
+            weld.C1 = tool.Grip
+            weld.Parent = handle
+            state.toolWelds[tool] = weld
+            if not handle:GetAttribute("TFL_WasCanCollide") then
+                handle:SetAttribute("TFL_WasCanCollide", handle.CanCollide)
+            end
+            handle.CanCollide = false
+            handle.Massless = true
+        end
+    end
+end
+
+local function removeAllWelds()
+    for _,tool in ipairs(state.toolsCache) do
+        if tool then
+            local handle = tool:FindFirstChild("Handle")
+            if handle then
+                local wc = handle:GetAttribute("TFL_WasCanCollide")
+                if wc ~= nil then handle.CanCollide = wc end
+                handle.Massless = false
+            end
+            removeToolWeld(tool)
+        end
+    end
+    table.clear(state.toolWelds)
+end
+
+local function cacheTools()
+    table.clear(state.toolsCache)
+    local char = state.currentChar
+    if not char then return end
+    local count = 0
+    for _,tool in ipairs(char:GetChildren()) do
+        if tool:IsA("Tool") then
+            count = count + 1
+            if count <= Config.MaxTools then
+                table.insert(state.toolsCache,tool)
+            end
+        end
+    end
+end
+
+local function equipAllTools()
+    local char = state.currentChar
+    if not char then return end
+    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if not bp then return end
+    local eq = 0
+    for _,tool in ipairs(bp:GetChildren()) do
+        if tool:IsA("Tool") and eq < Config.MaxTools then
+            tool.Parent = char
+            eq = eq + 1
+        end
+    end
+end
+
+local function hasBackpackTools()
+    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if not bp then return false end
+    for _,c in ipairs(bp:GetChildren()) do
+        if c:IsA("Tool") then return true end
+    end
+    return false
+end
+
+local function equipCacheAndWeld()
+    if not state.active then return false end
+    equipAllTools()
+    cacheTools()
+    if #state.toolsCache > 0 then
+        applyToolWelds()
+        return true
+    end
+    return false
+end
+
+local function requestReequip()
+    if not state.active then return end
+    state.reequipToken = state.reequipToken + 1
+    local token = state.reequipToken
+    task.spawn(function()
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        if token ~= state.reequipToken or not state.active then return end
+        state.currentChar = char
+        state.currentRoot = getHRP(char) or char:WaitForChild("HumanoidRootPart",5)
+        local deadline = os.clock()+3
+        repeat
+            if token ~= state.reequipToken or not state.active then return end
+            if equipCacheAndWeld() and not hasBackpackTools() then return end
+            task.wait() -- will be hooked to PostSimulation:Wait()
+        until os.clock() >= deadline
+        equipCacheAndWeld()
+    end)
+end
+
+local function getClosestTarget()
+    if not state.currentRoot then return nil end
+    local closest, bestDist = nil, Config.TouchAssistRange
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local char = plr.Character
+            if char then
+                local root = getHRP(char)
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if root and hum and hum.Health>0 then
+                    local d = (root.Position - state.currentRoot.Position).Magnitude
+                    if d < bestDist then
+                        bestDist = d
+                        closest = char
                     end
                 end
             end
         end
-        bypassRemotes(obj)
+    end
+    return closest
+end
+
+local function touchAssist()
+    local target = getClosestTarget()
+    if not target then return end
+    local parts = {}
+    for _,name in ipairs({"HumanoidRootPart","UpperTorso","Torso","Head"}) do
+        local p = target:FindFirstChild(name)
+        if p and p:IsA("BasePart") then table.insert(parts,p) end
+    end
+    if #parts==0 then return end
+    for _,tool in ipairs(state.toolsCache) do
+        if tool and tool.Parent and tool:IsDescendantOf(workspace) then
+            local touch = getToolTouchPart(tool)
+            if touch then
+                for _,p in ipairs(parts) do
+                    pcall(firetouchinterest,touch,p,0)
+                    pcall(firetouchinterest,touch,p,1)
+                end
+            end
+        end
     end
 end
 
--- Bypass remotes in ReplicatedStorage and ServerScriptService
-bypassRemotes(game:GetService("ReplicatedStorage"))
-pcall(function() bypassRemotes(game.ServerScriptService) end)
+local function activateTools()
+    for _,tool in ipairs(state.toolsCache) do
+        if tool and tool.Parent and tool:IsDescendantOf(workspace) then
+            pcall(tool.Activate,tool)
+        end
+    end
+end
 
--- 3. HOOK GLOBAL WAIT/DELAY FUNCTIONS
-_G.oldWait = wait
-wait = function() return end
+-- ================== FASTEST SPEED: activate every frame ==================
+local function damagePulse()
+    activateTools()
+    touchAssist()
+end
 
-_G.oldDelay = delay
-delay = function(t, f) if f then f() end end
+-- ================== MAIN LOOP ==================
+RunService.PreSimulation:Connect(function()
+    if not state.active then return end
+    if not state.currentChar or not state.currentRoot then
+        requestReequip()
+        return
+    end
+    if #state.toolsCache == 0 then
+        requestReequip()
+        return
+    end
+    local now = os.clock()
+    if now - state.lastPulse < 1/60 then return end
+    state.lastPulse = now
+    damagePulse()
+end)
 
-_G.oldSpawn = spawn
-spawn = function(f) if f then f() end end
+_G.__TFLUseToolsCleanup = function()
+    state.active = false
+    removeAllWelds()
+    disconnectAll(connections)
+end
 
--- 4. DISABLE DEBOUNCE (most common cooldown method)
-_G.debounce = false
-_G.cooldown = 0
+-- ================== INIT ==================
+if LocalPlayer.Character then
+    state.currentChar = LocalPlayer.Character
+    state.currentRoot = getHRP(LocalPlayer.Character)
+end
+state.active = true
+requestReequip()
 
--- 5. MONITOR FOR COOLDOWN VARIABLES AND DISABLE THEM
-LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
-    if child:FindFirstChild("Cooldown") then
-        child.Cooldown:Destroy()
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if state.active then
+        state.currentChar = char
+        state.currentRoot = getHRP(char)
+        requestReequip()
     end
 end)
 
-print("✅ NO COOLDOWN ACTIVATED - Ready to spam abilities!")
+print("[TFL Use Tools] Automatic mode, hooked no cooldown active.")
