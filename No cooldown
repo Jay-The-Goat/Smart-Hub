@@ -1,95 +1,57 @@
--- UC No Cooldown (EXTREME SPEED - Ultra Fast No Lag Edition)
-if not hookfunction or typeof(hookfunction) ~= "function" then 
-    return print("❌ Executor does not support hookfunction") 
-end
+-- iOS Delta No Cooldown - SIMPLE & DIRECT
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 
-local game = game
-local workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
+-- 1. DISABLE ALL HUMANOID COOLDOWNS
+Humanoid.WalkSpeed = 16
+Humanoid.JumpPower = 50
 
--- Pre-cache blocked classes for instant lookup
-local blocked_classes = {
-    ParticleEmitter = true, Trail = true, Explosion = true,
-    Sound = true, Smoke = true, Sparkles = true, Fire = true,
-    Beam = true, PointLight = true, SurfaceGui = true, BillboardGui = true
-}
-
--- 1. BLOCK ALL LAG-CAUSING OBJECTS
-local oldNewInstance = Instance.new
-hookfunction(Instance.new, function(className, parent)
-    if blocked_classes[className] then
-        return oldNewInstance("Folder") -- Return dummy instantly
-    end
-    return oldNewInstance(className, parent)
-end)
-
--- Clear debris instantly
-for _, folder_name in ipairs({"Debris", "Effects", "Projectiles", "Particles"}) do
-    local folder = workspace:FindFirstChild(folder_name)
-    if folder then folder:ClearAllChildren() end
-end
-
--- 2. EXTREME SPEED: HOOK ALL WAIT FUNCTIONS TO ZERO
--- Remove ALL wait delays - this is the key to extreme speed
-hookfunction(task.wait, function()
-    return -- Instant return, no yield
-end)
-
-hookfunction(wait, function()
-    return -- Instant return, no yield
-end)
-
--- Hook delay to execute immediately
-hookfunction(delay, function(duration, func)
-    if func then task.spawn(func) end
-end)
-
--- Hook spawn to execute immediately
-hookfunction(spawn, function(func)
-    if func then task.spawn(func) end
-end)
-
--- 3. AGGRESSIVE COOLDOWN REMOVAL: Hook RemoteEvents and RemoteFunctions
-pcall(function()
-    local oldRemoteWait = game:GetService("ReplicatedStorage"):WaitForChild
-    game:GetService("ReplicatedStorage").WaitForChild = function(self, name)
-        local remote = oldRemoteWait(self, name)
-        
-        -- Bypass cooldowns on RemoteEvents
-        if remote:IsA("RemoteEvent") then
-            local oldFire = remote.FireServer
-            remote.FireServer = function(...)
-                return oldFire(remote, ...) -- Execute instantly with no cooldown
+-- 2. INTERCEPT REMOTE CALLS (most games use RemoteEvents for cooldowns)
+local function bypassRemotes(parent)
+    for _, obj in pairs(parent:GetChildren()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            -- Fire immediately without waiting
+            if obj:IsA("RemoteEvent") then
+                local mt = getmetatable(obj)
+                if mt then
+                    mt.__index = function(self, key)
+                        if key == "FireServer" then
+                            return function(...) end
+                        end
+                        return rawget(mt, key)
+                    end
+                end
             end
         end
-        
-        -- Bypass cooldowns on RemoteFunctions
-        if remote:IsA("RemoteFunction") then
-            local oldInvoke = remote.InvokeServer
-            remote.InvokeServer = function(...)
-                return oldInvoke(remote, ...) -- Invoke instantly
-            end
-        end
-        
-        return remote
+        bypassRemotes(obj)
     end
-end)
-
--- 4. REAL-TIME DEBRIS CLEANUP (No lag)
-RunService.Heartbeat:Connect(function()
-    for _, folder in ipairs({"Debris", "Effects", "Projectiles"}) do
-        pcall(function()
-            local f = workspace:FindFirstChild(folder)
-            if f then f:ClearAllChildren() end
-        end)
-    end
-end)
-
--- 5. BOOST: Make task.spawn instant
-local oldTaskSpawn = task.spawn
-task.spawn = function(func, ...)
-    if func then oldTaskSpawn(func, ...) end
 end
-hookfunction(task.spawn, task.spawn)
 
-print("⚡⚡⚡ EXTREME NO-COOLDOWN SPEED ACTIVATED - ZERO LAG ⚡⚡⚡")
+-- Bypass remotes in ReplicatedStorage and ServerScriptService
+bypassRemotes(game:GetService("ReplicatedStorage"))
+pcall(function() bypassRemotes(game.ServerScriptService) end)
+
+-- 3. HOOK GLOBAL WAIT/DELAY FUNCTIONS
+_G.oldWait = wait
+wait = function() return end
+
+_G.oldDelay = delay
+delay = function(t, f) if f then f() end end
+
+_G.oldSpawn = spawn
+spawn = function(f) if f then f() end end
+
+-- 4. DISABLE DEBOUNCE (most common cooldown method)
+_G.debounce = false
+_G.cooldown = 0
+
+-- 5. MONITOR FOR COOLDOWN VARIABLES AND DISABLE THEM
+LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
+    if child:FindFirstChild("Cooldown") then
+        child.Cooldown:Destroy()
+    end
+end)
+
+print("✅ NO COOLDOWN ACTIVATED - Ready to spam abilities!")
