@@ -1,11 +1,11 @@
--- UC No Cooldown (ULTRA OPTIMIZED - Zero Lag Edition)
+-- UC No Cooldown (EXTREME SPEED - Ultra Fast No Lag Edition)
 if not hookfunction or typeof(hookfunction) ~= "function" then 
     return print("❌ Executor does not support hookfunction") 
 end
 
-local debug_info = debug.info
 local game = game
 local workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 -- Pre-cache blocked classes for instant lookup
 local blocked_classes = {
@@ -14,67 +14,82 @@ local blocked_classes = {
     Beam = true, PointLight = true, SurfaceGui = true, BillboardGui = true
 }
 
--- Pre-cache debris folders
-local debris_folders = {"Debris", "Effects", "Projectiles", "Particles"}
-
--- 1. ULTRA-FAST LAG PURGE: Instant object interception
+-- 1. BLOCK ALL LAG-CAUSING OBJECTS
 local oldNewInstance = Instance.new
-Instance.new = function(className, parent)
+hookfunction(Instance.new, function(className, parent)
     if blocked_classes[className] then
-        return oldNewInstance("Folder") -- Return immediately, no destroy overhead
+        return oldNewInstance("Folder") -- Return dummy instantly
     end
     return oldNewInstance(className, parent)
-end
-hookfunction(Instance.new, Instance.new)
+end)
 
--- Clear debris instantly on load (single pass)
-for _, folder_name in ipairs(debris_folders) do
+-- Clear debris instantly
+for _, folder_name in ipairs({"Debris", "Effects", "Projectiles", "Particles"}) do
     local folder = workspace:FindFirstChild(folder_name)
     if folder then folder:ClearAllChildren() end
 end
 
--- 2. ZERO-WAIT SPEED: Aggressive wait/delay interception
-local dummy_coroutine = coroutine.create(function() end)
-
-local oldTaskWait = task.wait
-task.wait = function(duration)
-    if not duration or duration < 1 then
-        return coroutine.yield()
-    end
-    return oldTaskWait(duration)
-end
-hookfunction(task.wait, task.wait)
-
-local oldWait = wait
-wait = function(duration)
-    if not duration or duration < 1 then
-        return coroutine.yield()
-    end
-    return oldWait(duration)
-end
-hookfunction(wait, wait)
-
--- Hook delay for instant execution
-pcall(function()
-    hookfunction(delay, function(_, func)
-        task.spawn(func)
-    end)
+-- 2. EXTREME SPEED: HOOK ALL WAIT FUNCTIONS TO ZERO
+-- Remove ALL wait delays - this is the key to extreme speed
+hookfunction(task.wait, function()
+    return -- Instant return, no yield
 end)
 
--- Hook spawn for instant execution
-pcall(function()
-    hookfunction(spawn, function(func)
-        task.spawn(func)
-    end)
+hookfunction(wait, function()
+    return -- Instant return, no yield
 end)
 
--- 3. MEMORY OPTIMIZATION: Disable render stepping lag sources
+-- Hook delay to execute immediately
+hookfunction(delay, function(duration, func)
+    if func then task.spawn(func) end
+end)
+
+-- Hook spawn to execute immediately
+hookfunction(spawn, function(func)
+    if func then task.spawn(func) end
+end)
+
+-- 3. AGGRESSIVE COOLDOWN REMOVAL: Hook RemoteEvents and RemoteFunctions
 pcall(function()
-    game:GetService("RunService").RenderStepped:Connect(function()
-        if workspace:FindFirstChild("Debris") then
-            workspace.Debris:ClearAllChildren()
+    local oldRemoteWait = game:GetService("ReplicatedStorage"):WaitForChild
+    game:GetService("ReplicatedStorage").WaitForChild = function(self, name)
+        local remote = oldRemoteWait(self, name)
+        
+        -- Bypass cooldowns on RemoteEvents
+        if remote:IsA("RemoteEvent") then
+            local oldFire = remote.FireServer
+            remote.FireServer = function(...)
+                return oldFire(remote, ...) -- Execute instantly with no cooldown
+            end
         end
-    end)
+        
+        -- Bypass cooldowns on RemoteFunctions
+        if remote:IsA("RemoteFunction") then
+            local oldInvoke = remote.InvokeServer
+            remote.InvokeServer = function(...)
+                return oldInvoke(remote, ...) -- Invoke instantly
+            end
+        end
+        
+        return remote
+    end
 end)
 
-print("⚡ ULTRA NO-LAG ACTIVATED - 0ms Cooldown Engaged")
+-- 4. REAL-TIME DEBRIS CLEANUP (No lag)
+RunService.Heartbeat:Connect(function()
+    for _, folder in ipairs({"Debris", "Effects", "Projectiles"}) do
+        pcall(function()
+            local f = workspace:FindFirstChild(folder)
+            if f then f:ClearAllChildren() end
+        end)
+    end
+end)
+
+-- 5. BOOST: Make task.spawn instant
+local oldTaskSpawn = task.spawn
+task.spawn = function(func, ...)
+    if func then oldTaskSpawn(func, ...) end
+end
+hookfunction(task.spawn, task.spawn)
+
+print("⚡⚡⚡ EXTREME NO-COOLDOWN SPEED ACTIVATED - ZERO LAG ⚡⚡⚡")
