@@ -1,7 +1,7 @@
 --[[
   LIGHTWEIGHT NO COOLDOWN WITH DAMAGE - Zero Lag
   - Cooldown bypass via hooks
-  - Tool positioning/welding to hands
+  - Tool activation for damage
   - Works with loopbring and manual tool use
   - Minimal overhead
 ]]
@@ -33,51 +33,8 @@ hookfunction(spawn, function(func)
 	if func then task.spawn(func) end
 end)
 
--- TOOL POSITIONING - Weld tools to hands
-local function positionTools()
-	local char = LocalPlayer.Character
-	if not char then return end
-	
-	local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-	local leftHand = char:FindFirstChild("LeftHand") or char:FindFirstChild("Left Arm")
-	
-	if not rightHand and not leftHand then return end
-	
-	local toolCount = 0
-	for _, tool in ipairs(char:GetChildren()) do
-		if tool:IsA("Tool") then
-			toolCount = toolCount + 1
-			local handle = tool:FindFirstChild("Handle")
-			
-			if handle then
-				-- Remove old welds
-				for _, weld in ipairs(handle:GetChildren()) do
-					if weld:IsA("WeldConstraint") or weld:IsA("Motor6D") then
-						weld:Destroy()
-					end
-				end
-				
-				-- Weld to appropriate hand
-				local hand = (toolCount % 2 == 1 and rightHand) or leftHand
-				if hand then
-					local weld = Instance.new("Motor6D")
-					weld.Part0 = handle
-					weld.Part1 = hand
-					weld.C0 = CFrame.new(0, 0, 0)
-					weld.C1 = CFrame.new(0, 0, 0)
-					weld.Parent = handle
-					
-					handle.CanCollide = false
-					handle.Massless = true
-				end
-			end
-		end
-	end
-end
-
 -- DAMAGE ACTIVATION - Works with loopbring and tool use
 local lastActivate = 0
-local lastPosition = 0
 RunService.PreSimulation:Connect(function()
 	if not LocalPlayer.Character then return end
 	
@@ -85,33 +42,48 @@ RunService.PreSimulation:Connect(function()
 	if now - lastActivate < 0.001 then return end
 	lastActivate = now
 	
-	-- Update tool positions every frame
-	if now - lastPosition < 0.05 then return end
-	lastPosition = now
-	positionTools()
-	
 	local char = LocalPlayer.Character
 	local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
 	if not root then return end
 	
+	-- Get all players within range (for loopbring compatibility)
+	local closest, bestDist = nil, 100
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= LocalPlayer then
+			local pChar = plr.Character
+			if pChar then
+				local pRoot = pChar:FindFirstChild("HumanoidRootPart") or pChar:FindFirstChild("Torso")
+				if pRoot then
+					local d = (pRoot.Position - root.Position).Magnitude
+					if d < bestDist then
+						bestDist = d
+						closest = pChar
+					end
+				end
+			end
+		end
+	end
+	
 	-- Activate all tools and fire touch interest
-	for _, tool in ipairs(char:GetChildren()) do
-		if tool:IsA("Tool") then
-			-- Activate tool
-			pcall(function() tool:Activate() end)
-			
-			-- Fire touch on all nearby players
-			local handle = tool:FindFirstChild("Handle")
-			if handle then
-				for _, plr in ipairs(Players:GetPlayers()) do
-					if plr ~= LocalPlayer then
-						local pChar = plr.Character
-						if pChar then
-							local targetParts = {pChar:FindFirstChild("HumanoidRootPart"), pChar:FindFirstChild("UpperTorso"), pChar:FindFirstChild("Torso"), pChar:FindFirstChild("Head")}
-							for _, p in ipairs(targetParts) do
-								if p then
-									pcall(firetouchinterest, handle, p, 0)
-									pcall(firetouchinterest, handle, p, 1)
+	if char then
+		for _, tool in ipairs(char:GetChildren()) do
+			if tool:IsA("Tool") then
+				-- Activate tool (handles manual use + auto activation)
+				pcall(function() tool:Activate() end)
+				
+				-- Fire touch on all nearby players (loopbring + normal)
+				local handle = tool:FindFirstChild("Handle")
+				if handle then
+					for _, plr in ipairs(Players:GetPlayers()) do
+						if plr ~= LocalPlayer then
+							local pChar = plr.Character
+							if pChar then
+								local targetParts = {pChar:FindFirstChild("HumanoidRootPart"), pChar:FindFirstChild("UpperTorso"), pChar:FindFirstChild("Torso"), pChar:FindFirstChild("Head")}
+								for _, p in ipairs(targetParts) do
+									if p then
+										pcall(firetouchinterest, handle, p, 0)
+										pcall(firetouchinterest, handle, p, 1)
+									end
 								end
 							end
 						end
@@ -122,14 +94,4 @@ RunService.PreSimulation:Connect(function()
 	end
 end)
 
--- Position tools on character spawn
-if LocalPlayer.Character then
-	positionTools()
-end
-
-LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(0.1)
-	positionTools()
-end)
-
-print("✅ Lightweight No Cooldown with Damage - Tools positioned, Zero Lag")
+print("✅ Lightweight No Cooldown with Damage - Works with loopbring, Zero Lag")
