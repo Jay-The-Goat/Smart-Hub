@@ -1,4 +1,4 @@
--- UC No Cooldown (Absolute 0-Lag & Visual Purge Edition)
+-- UC No Cooldown (ULTRA OPTIMIZED - Zero Lag Edition)
 if not hookfunction or typeof(hookfunction) ~= "function" then 
     return print("❌ Executor does not support hookfunction") 
 end
@@ -6,68 +6,75 @@ end
 local debug_info = debug.info
 local game = game
 local workspace = game:GetService("Workspace")
-local lighting = game:GetService("Lighting")
 
--- 1. THE ULTIMATE LAG PURGE: Intercept and delete visual/audio spam instantly
-local oldNewInstance
-oldNewInstance = hookfunction(Instance.new, function(className, parent)
-    -- Block performance-heavy objects created by spammed weapon loops
-    if className == "ParticleEmitter" or className == "Trail" or className == "Explosion" or className == "Sound" or className == "Smoke" or className == "Sparkles" then
-        -- Return a dummy object or completely bypass creation to save CPU/GPU cycles
-        local dummy = oldNewInstance("Folder")
-        task.delay(0, function() dummy:Destroy() end)
-        return dummy
+-- Pre-cache blocked classes for instant lookup
+local blocked_classes = {
+    ParticleEmitter = true, Trail = true, Explosion = true,
+    Sound = true, Smoke = true, Sparkles = true, Fire = true,
+    Beam = true, PointLight = true, SurfaceGui = true, BillboardGui = true
+}
+
+-- Pre-cache debris folders
+local debris_folders = {"Debris", "Effects", "Projectiles", "Particles"}
+
+-- 1. ULTRA-FAST LAG PURGE: Instant object interception
+local oldNewInstance = Instance.new
+Instance.new = function(className, parent)
+    if blocked_classes[className] then
+        return oldNewInstance("Folder") -- Return immediately, no destroy overhead
     end
     return oldNewInstance(className, parent)
-end)
+end
+hookfunction(Instance.new, Instance.new)
 
--- Nuke common projectile folders/debris structures that games use to dump spammed skills
-pcall(function()
-    if workspace:FindFirstChild("Debris") then workspace.Debris:ClearAllChildren() end
-    if workspace:FindFirstChild("Effects") then workspace.Effects:ClearAllChildren() end
-    if workspace:FindFirstChild("Projectiles") then workspace.Projectiles:ClearAllChildren() end
-end)
+-- Clear debris instantly on load (single pass)
+for _, folder_name in ipairs(debris_folders) do
+    local folder = workspace:FindFirstChild(folder_name)
+    if folder then folder:ClearAllChildren() end
+end
 
--- 2. KEEP MAX INSTANT SPEED: Hook task.wait globally with source filtration
-local oldTaskWait
-oldTaskWait = hookfunction(task.wait, function(duration)
-    if not duration or duration <= 0.5 then
-        local source = debug_info(2, "s")
-        if source and (source:find("RobloxGui") or source:find("CoreScript")) then
-            return oldTaskWait(duration)
-        end
-        task.defer(coroutine.running())
+-- 2. ZERO-WAIT SPEED: Aggressive wait/delay interception
+local dummy_coroutine = coroutine.create(function() end)
+
+local oldTaskWait = task.wait
+task.wait = function(duration)
+    if not duration or duration < 1 then
         return coroutine.yield()
     end
     return oldTaskWait(duration)
-end)
+end
+hookfunction(task.wait, task.wait)
 
--- Hook legacy wait globally with source filtration
-local oldWait
-oldWait = hookfunction(wait, function(duration)
-    if not duration or duration <= 0.5 then
-        local source = debug_info(2, "s")
-        if source and (source:find("RobloxGui") or source:find("CoreScript")) then
-            return oldWait(duration)
-        end
-        task.defer(coroutine.running())
+local oldWait = wait
+wait = function(duration)
+    if not duration or duration < 1 then
         return coroutine.yield()
     end
     return oldWait(duration)
-end)
+end
+hookfunction(wait, wait)
 
--- Hook legacy delay for absolute instant fire
+-- Hook delay for instant execution
 pcall(function()
     hookfunction(delay, function(_, func)
         task.spawn(func)
     end)
 end)
 
--- Hook legacy spawn for absolute instant fire
+-- Hook spawn for instant execution
 pcall(function()
     hookfunction(spawn, function(func)
         task.spawn(func)
     end)
 end)
 
-print("⚡ UC Absolute 0-Lag No-Cooldown Engaged (Visuals Purged)")
+-- 3. MEMORY OPTIMIZATION: Disable render stepping lag sources
+pcall(function()
+    game:GetService("RunService").RenderStepped:Connect(function()
+        if workspace:FindFirstChild("Debris") then
+            workspace.Debris:ClearAllChildren()
+        end
+    end)
+end)
+
+print("⚡ ULTRA NO-LAG ACTIVATED - 0ms Cooldown Engaged")
