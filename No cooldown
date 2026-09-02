@@ -15,7 +15,7 @@ oldNewInstance = hookfunction(Instance.new, function(className, parent)
     if className == "ParticleEmitter" or className == "Trail" or className == "Explosion" or className == "Sound" or className == "Smoke" or className == "Sparkles" then
         -- Return a dummy object or completely bypass creation to save CPU/GPU cycles
         local dummy = oldNewInstance("Folder")
-        dummy:Destroy()
+        task.delay(0.001, function() dummy:Destroy() end)
         return dummy
     end
     return oldNewInstance(className, parent)
@@ -31,7 +31,7 @@ end)
 -- 2. KEEP MAX INSTANT SPEED: Hook task.wait globally with source filtration
 local oldTaskWait
 oldTaskWait = hookfunction(task.wait, function(duration)
-    if not duration or duration <= 0.03 then
+    if not duration or duration <= 0.5 then
         local source = debug_info(2, "s")
         if source and (source:find("RobloxGui") or source:find("CoreScript")) then
             return oldTaskWait(duration)
@@ -45,7 +45,7 @@ end)
 -- Hook legacy wait globally with source filtration
 local oldWait
 oldWait = hookfunction(wait, function(duration)
-    if not duration or duration <= 0.03 then
+    if not duration or duration <= 0.5 then
         local source = debug_info(2, "s")
         if source and (source:find("RobloxGui") or source:find("CoreScript")) then
             return oldWait(duration)
@@ -58,12 +58,8 @@ end)
 
 -- Hook legacy delay for absolute instant fire
 pcall(function()
-    hookfunction(delay, function(duration, func)
-        if duration and duration <= 0.03 then
-            if func then task.spawn(func) end
-        else
-            task.delay(duration, func)
-        end
+    hookfunction(delay, function(_, func)
+        task.spawn(func)
     end)
 end)
 
@@ -74,14 +70,7 @@ pcall(function()
     end)
 end)
 
--- 3. ULTRA SPEED BOOST: Minimal delay between activations
-local lastActivation = 0
-local minDelay = 0.001 -- Barely slower: only 1ms between each activation
+-- 3. BARELY SLOWER STABILITY: 1ms delay to prevent Delta crashes
+game:GetService("RunService").RenderStepped:Wait()
 
-game:GetService("RunService").Heartbeat:Connect(function()
-    if tick() - lastActivation >= minDelay then
-        lastActivation = tick()
-    end
-end)
-
-print("⚡ UC Absolute 0-Lag No-Cooldown Engaged (Visuals Purged - Optimized)")
+print("⚡ UC Absolute 0-Lag No-Cooldown Engaged (Visuals Purged - Stable)")
