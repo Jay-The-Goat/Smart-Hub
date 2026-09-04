@@ -319,5 +319,12 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         requestReequip()
     end
 end)
+hookfunction(task.wait, function()
+	return RunService.PostSimulation:Wait()
+end)
+
+hookfunction(delay, function(_,func)
+	task.spawn(func)
+end)
 
 print("[TFL Use Tools] Automatic mode, hooked no cooldown active - 16x FASTER THAN ORIGINAL, ZERO LAG.")
