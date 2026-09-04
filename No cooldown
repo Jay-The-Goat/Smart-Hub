@@ -52,7 +52,7 @@ print("⚡ No Cooldown Running - 16x FASTER THAN ORIGINAL")
 -- ================== CONFIG ==================
 local Config = {
     Enabled = true,
-    MaxTools = 5,
+    MaxTools = 20,
     TouchAssistRange = 14
 }
 
