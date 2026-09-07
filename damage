@@ -1,3 +1,7 @@
+-- Variables del jugador y servicios
+local player = game.Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local gui = player:WaitForChild("PlayerGui")
 
 -- Configuraciones globales
