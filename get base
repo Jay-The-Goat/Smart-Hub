@@ -1,0 +1,70 @@
+local order = { 
+    "Robotic", "Storm", "Stone", "Magic", -- Bases principales a reclamar primero
+    "Spike", "Strong", "Web", 
+    "Insanity", "Dark", "Giant", "Kong", "Hyper", "Shadow", "Nuclear", 
+    "Frozen", "Magma", "Void", "Thunder", "Toxic", "Mecha" 
+}
+
+-- Servicios y variables necesarias
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local touchinterest = {}
+
+-- Función para manejar el toque entre dos partes
+local firetouchinterest = firetouchinterest or function(part, part2, value)
+    if part and part2 and part:IsA("BasePart") and part2:IsA("BasePart") then
+        if value == 0 then
+            touchinterest[1] = part.CFrame
+            part.CFrame = part2.CFrame
+        else
+            part.CFrame = touchinterest[1] or part.CFrame
+            touchinterest[1] = nil
+        end
+    end
+end
+
+-- Función para verificar si un Tycoon está sin dueño
+local function OwnerlessTycoon(name)
+    local tycoon = workspace.Tycoons:FindFirstChild(name)
+    local ownerObject = tycoon and tycoon:FindFirstChild("isim")
+    return ownerObject and not Players:FindFirstChild(ownerObject.Value)
+end
+
+-- Función para reclamar un Tycoon
+local function ClaimTycoon(name)
+    local tycoon = workspace.Tycoons:FindFirstChild(name)
+    local claimDoor = tycoon and tycoon:FindFirstChild("Door")
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if claimDoor and root then
+        for _, part in ipairs(claimDoor:GetChildren()) do
+            if part:IsA("BasePart") then
+                firetouchinterest(root, part, 0)
+                firetouchinterest(root, part, 1)
+            end
+        end
+    end
+end
+
+-- Función para verificar si el jugador ya está en una base
+local function IsInBase(name)
+    local tycoon = workspace.Tycoons:FindFirstChild(name)
+    local ownerObject = tycoon and tycoon:FindFirstChild("isim")
+    return ownerObject and ownerObject.Value == LocalPlayer.Name
+end
+
+-- Búsqueda rápida y sin pausas para reclamar una base
+coroutine.wrap(function()
+    while true do
+        for _, name in ipairs(order) do
+            -- Si ya estamos en una base, salir del bucle
+            if IsInBase(name) then return end  
+
+            -- Intentar reclamar la base si está disponible
+            if OwnerlessTycoon(name) then
+                ClaimTycoon(name)
+                task.wait() -- Evita sobrecargar el script sin retrasar la ejecución
+            end
+        end
+    end
+end)()
