@@ -38,7 +38,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 -- =============================================================================
---  ORIGINAL ACTIONS (unchanged)
+--  ORIGINAL ACTIONS (unchanged except Tab2 first five entries)
 -- =============================================================================
 local customActions = {
 	Tab1 = {
@@ -74,11 +74,11 @@ local customActions = {
 		[30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
 	},
 	Tab2 = {
-		[1]  = { name = "Button 1",  run = function() loadstring(game:HttpGet(""))() end },
-		[2]  = { name = "Button 2",  run = function() loadstring(game:HttpGet(""))() end },
-		[3]  = { name = "Button 3",  run = function() loadstring(game:HttpGet(""))() end },
-		[4]  = { name = "Button 4",  run = function() loadstring(game:HttpGet(""))() end },
-		[5]  = { name = "Button 5",  run = function() loadstring(game:HttpGet(""))() end },
+		[1]  = { name = "Antilag",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/antilag"))() end },
+		[2]  = { name = "Damage",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/damage"))() end },
+		[3]  = { name = "Reach",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
+		[4]  = { name = "Get base", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
+		[5]  = { name = "6x damage",run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/6x%20damage"))() end },
 		[6]  = { name = "Button 6",  run = function() loadstring(game:HttpGet(""))() end },
 		[7]  = { name = "Button 7",  run = function() loadstring(game:HttpGet(""))() end },
 		[8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
