@@ -45,9 +45,9 @@ local customActions = {
 	Tab1 = {
 		[1]  = { name = "Get Tools",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20tools"))() end },
 		[2]  = { name = "Loop Bring",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/loopbring"))() end },
-		[3]  = { name = "No Cooldown",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/No%20cooldown"))() end },
+		[3]  = { name = "use tools",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/use%20tools"))() end },
 		[4]  = { name = "Respawn",       run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/respawn"))() end },
-		[5]  = { name = "Use Tools",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/use%20tools"))() end },
+		[5]  = { name = "button 5",     run = function() end },
 		[6]  = { name = "Kill Counter",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Kill%20Counter"))() end },
 		[7]  = { name = "Kill Aura",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Kill%20aura"))() end },
 		[8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
