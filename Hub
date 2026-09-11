@@ -80,7 +80,7 @@ local customActions = {
 		[3]  = { name = "Reach",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
 		[4]  = { name = "Get base", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
 		[5]  = { name = "6x damage",run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/6x%20damage"))() end },
-		[6]  = { name = "Button 6",  run = function() loadstring(game:HttpGet(""))() end },
+		[6]  = { name = "Tools Orbit",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Tools%20Orbit"))() end },
 		[7]  = { name = "Button 7",  run = function() loadstring(game:HttpGet(""))() end },
 		[8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
 		[9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
