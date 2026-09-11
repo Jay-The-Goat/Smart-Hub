@@ -1,0 +1,95 @@
+-- Tool Orbit for Delta Executor (Project Delta)
+-- Orbits ONLY equipped tools. Character never moves, never holds, never flies.
+
+local RADIUS = 6
+local SPEED = 0.98       -- 1.0 (4x) reduced by 2%
+local HEIGHT_OFFSET = 0
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local character, hrp
+local angle = 0
+
+local function bindCharacter(char)
+    character = char
+    hrp = char:WaitForChild("HumanoidRootPart", 10)
+end
+if LocalPlayer.Character then bindCharacter(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(bindCharacter)
+
+local function getEquippedTools()
+    local list = {}
+    if not character then return list end
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Handle") then
+            table.insert(list, item)
+        end
+    end
+    return list
+end
+
+local function killWelds(container)
+    for _, c in ipairs(container:GetChildren()) do
+        if c:IsA("Weld") or c:IsA("WeldConstraint") or c:IsA("Motor6D") then
+            c:Destroy()
+        end
+    end
+end
+
+local function killGripsToHandles(handles)
+    if not character then return end
+    for _, d in ipairs(character:GetDescendants()) do
+        if d:IsA("Weld") or d:IsA("WeldConstraint") or d:IsA("Motor6D") then
+            for _, h in ipairs(handles) do
+                if d.Part0 == h or d.Part1 == h then
+                    d:Destroy()
+                    break
+                end
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if not hrp or not hrp.Parent then return end
+
+    local tools = getEquippedTools()
+    local count = #tools
+    if count == 0 then return end
+
+    local handles = {}
+    for _, tool in ipairs(tools) do
+        local h = tool:FindFirstChild("Handle")
+        if h then table.insert(handles, h) end
+    end
+
+    killGripsToHandles(handles)
+
+    angle = angle + SPEED
+    if angle > math.pi * 2 then angle = angle - math.pi * 2 end
+
+    for i, tool in ipairs(tools) do
+        local handle = tool:FindFirstChild("Handle")
+        if handle then
+            killWelds(handle)
+            killWelds(tool)
+
+            handle.Anchored = false
+            handle.CanCollide = false
+            handle.Massless = true
+            handle.Velocity = Vector3.zero
+            handle.RotVelocity = Vector3.zero
+
+            local offsetAngle = angle + (i - 1) * (math.pi * 2 / count)
+            handle.CFrame = hrp.CFrame * CFrame.new(
+                math.cos(offsetAngle) * RADIUS,
+                HEIGHT_OFFSET,
+                math.sin(offsetAngle) * RADIUS
+            )
+        end
+    end
+end)
+
+print("[Orbit Tools] Loaded — equipped-only orbit, 0.98 speed (4x minus 2%), character untouched.")
