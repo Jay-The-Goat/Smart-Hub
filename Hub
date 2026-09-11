@@ -77,7 +77,7 @@ local customActions = {
 	Tab2 = {
 		[1]  = { name = "Antilag",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/antilag"))() end },
 		[2]  = { name = "Damage",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/damage"))() end },
-		[3]  = { name = "Reach",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
+		[3]  = { name = "Reach",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/reach"))() end },
 		[4]  = { name = "Get base", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
 		[5]  = { name = "6x damage",run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/6x%20damage"))() end },
 		[6]  = { name = "Tools Orbit",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Tools%20Orbit"))() end },
