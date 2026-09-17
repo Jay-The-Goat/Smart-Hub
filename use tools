@@ -1,40 +1,44 @@
--- Delta Executor UI + Backend Functional Injection Wrapper (Compact Mobile Version)
--- With Mode Panel & No-Cooldown (Works in ALL Modes)
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CollectionService = game:GetService("CollectionService")
+-- ============================================================
+-- USE TOOLS — Core only + Mobile (Android / iOS)
+-- Force-equips every tool in the backpack and welds them to hands
+-- Compact draggable bar (tap = toggle) | K key (desktop)
+-- ============================================================
+
+local Players           = game:GetService("Players")
+local RunService        = game:GetService("RunService")
+local UserInputService  = game:GetService("UserInputService")
+local CoreGui           = game:GetService("CoreGui")
+local TweenService      = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 
 -- ================== CONFIG ==================
 local Config = {
-    Enabled = false,
     MaxTools = 20,
-    Mode = "Normal",
-    NoCooldown = false
 }
 
-local MODES_ORDER = {
-    "Normal", "Event", "Max", "Ultra", "Insane", "God", "Omega", "Hyper",
-    "Mega", "Giga", "Tera", "Peta", "Exa", "Zetta", "Yotta", "Ronna", "Quetta"
+-- ================== STATE ==================
+local state = {
+    active      = false,
+    toolsCache  = {},
+    toolWelds   = {},
+    currentChar = nil,
 }
 
--- ================== GUI SETUP ==================
+-- ================== GUI SETUP (original compact bar) ==================
 local DeltaUI = Instance.new("ScreenGui")
 DeltaUI.Name = "DeltaUseToolsSystem"
-DeltaUI.Parent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
+DeltaUI.ResetOnSpawn = false
+DeltaUI.IgnoreGuiInset = true
+pcall(function() DeltaUI.Parent = CoreGui end)
+if not DeltaUI.Parent then DeltaUI.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- Main compact bar (from user's script)
 local ToolFrame = Instance.new("Frame")
 ToolFrame.Name = "UseToolsBox"
 ToolFrame.Size = UDim2.new(0, 120, 0, 32)
 ToolFrame.Position = UDim2.new(1, -140, 0.4, 0)
 ToolFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 ToolFrame.Active = true
-ToolFrame.Draggable = true
 ToolFrame.Parent = DeltaUI
 
 local ToolCorner = Instance.new("UICorner")
@@ -87,101 +91,60 @@ InteractionButton.BackgroundTransparency = 1
 InteractionButton.Text = ""
 InteractionButton.Parent = ToolFrame
 
--- ================== MODE PANEL (appears below bar when active) ==================
-local ModePanel = Instance.new("Frame")
-ModePanel.Name = "ModePanel"
-ModePanel.Size = UDim2.new(0, 120, 0, 240)  -- height accommodates many modes with scroll
-ModePanel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ModePanel.BorderSizePixel = 0
-ModePanel.Visible = false
-ModePanel.Parent = DeltaUI
+-- ================== DRAGGING (touch + mouse) ==================
+local dragging, dragStart, startPos, touchMoved
 
-local ModePanelCorner = Instance.new("UICorner")
-ModePanelCorner.CornerRadius = UDim.new(0, 5)
-ModePanelCorner.Parent = ModePanel
+InteractionButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        touchMoved = false
+        dragStart = input.Position
+        startPos = ToolFrame.Position
+    end
+end)
 
-local ModePanelStroke = Instance.new("UIStroke")
-ModePanelStroke.Thickness = 1.5
-ModePanelStroke.Color = Color3.fromRGB(255, 50, 50)
-ModePanelStroke.Parent = ModePanel
+InteractionButton.InputChanged:Connect(function(input)
+    if not dragging then return end
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        if math.abs(delta.X) > 4 or math.abs(delta.Y) > 4 then
+            touchMoved = true
+        end
+        ToolFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end)
 
--- Scrolling frame for mode buttons
-local ModeScroll = Instance.new("ScrollingFrame")
-ModeScroll.Size = UDim2.new(1, -4, 1, -4)
-ModeScroll.Position = UDim2.new(0, 2, 0, 2)
-ModeScroll.BackgroundTransparency = 1
-ModeScroll.BorderSizePixel = 0
-ModeScroll.ScrollBarThickness = 2
-ModeScroll.CanvasSize = UDim2.new(0, 0, 0, #MODES_ORDER * 22)
-ModeScroll.Parent = ModePanel
-
-local modeButtons = {}
-
-for i, modeName in ipairs(MODES_ORDER) do
-    local btn = Instance.new("TextButton")
-    btn.Name = modeName
-    btn.Size = UDim2.new(1, 0, 0, 20)
-    btn.Position = UDim2.new(0, 0, 0, (i-1) * 22)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.Text = modeName
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 12
-    btn.Font = Enum.Font.SourceSansBold
-    btn.BorderSizePixel = 0
-    btn.Parent = ModeScroll
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 3)
-    corner.Parent = btn
-
-    btn.MouseButton1Click:Connect(function()
-        Config.Mode = modeName
-        updateModeHighlight()
-        updateLabel()
-        print("[Use Tools] Mode set to:", modeName)
-    end)
-
-    modeButtons[modeName] = btn
-end
-
--- Highlight function
-function updateModeHighlight()
-    for name, btn in pairs(modeButtons) do
-        if name == Config.Mode then
-            btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+UserInputService.InputEnded:Connect(function(input)
+    if not dragging then return end
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+        if not touchMoved then
+            toggle()
         end
     end
+end)
+
+-- ================== HELPERS ==================
+local function getRightHand(c)
+    return c and (c:FindFirstChild("RightHand") or c:FindFirstChild("Right Arm"))
+end
+local function getLeftHand(c)
+    return c and (c:FindFirstChild("LeftHand") or c:FindFirstChild("Left Arm"))
 end
 
--- ================== STATE ==================
-local state = {
-    active = Config.Enabled,
-    toolsCache = {},
-    toolWelds = {},
-    currentChar = nil,
-    currentRoot = nil,
-}
-
--- ================== TOOL HELPERS ==================
-local function getHRP(c)
-    return c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso"))
-end
-local function getRightHand(c) return c and (c:FindFirstChild("RightHand") or c:FindFirstChild("Right Arm")) end
-local function getLeftHand(c) return c and (c:FindFirstChild("LeftHand") or c:FindFirstChild("Left Arm")) end
-
-local function getToolTouchPart(tool)
-    local h = tool:FindFirstChild("Handle")
-    if h and h:IsA("BasePart") then return h end
-    for _,obj in ipairs(tool:GetDescendants()) do
-        if obj:IsA("TouchTransmitter") and obj.Parent and obj.Parent:IsA("BasePart") then
-            return obj.Parent
+-- ================== WELDING ==================
+local function clearHandGrips(hand)
+    for _, v in ipairs(hand:GetChildren()) do
+        if v:IsA("Weld") and (v.Name == "RightGrip" or v.Name == "LeftGrip" or v.Name == "TFL_ToolWeld") then
+            v:Destroy()
         end
     end
-    return nil
 end
 
 local function removeToolWeld(tool)
@@ -190,65 +153,68 @@ local function removeToolWeld(tool)
     state.toolWelds[tool] = nil
 end
 
+local function weldTo(tool, hand, offset)
+    local handle = tool:FindFirstChild("Handle")
+    if not handle or not hand then return end
+
+    removeToolWeld(tool)
+
+    local weld = Instance.new("Weld")
+    weld.Name = "TFL_ToolWeld"
+    weld.Part0 = hand
+    weld.Part1 = handle
+    weld.C0 = offset
+    weld.C1 = tool.Grip
+    weld.Parent = hand
+
+    state.toolWelds[tool] = weld
+
+    if not handle:GetAttribute("TFL_WasCanCollide") then
+        handle:SetAttribute("TFL_WasCanCollide", handle.CanCollide)
+    end
+    handle.CanCollide = false
+    handle.Massless = true
+end
+
 local function applyToolWelds()
     if not state.currentChar or not state.active then return end
     local char = state.currentChar
     local rHand = getRightHand(char)
     local lHand = getLeftHand(char)
     if not rHand or not lHand then return end
+
+    clearHandGrips(rHand)
+    clearHandGrips(lHand)
+
     local rTools, lTools = {}, {}
-    for _,tool in ipairs(state.toolsCache) do
+    for _, tool in ipairs(state.toolsCache) do
         local handle = tool and tool:FindFirstChild("Handle")
         if handle and handle:IsA("BasePart") then
             if tool.Name and tool.Name:lower():find("axe") then
-                table.insert(lTools,tool)
+                table.insert(lTools, tool)
             else
-                table.insert(rTools,tool)
+                table.insert(rTools, tool)
             end
         end
     end
-    for i,tool in ipairs(rTools) do
-        local handle = tool:FindFirstChild("Handle")
-        if handle then
-            removeToolWeld(tool)
-            local weld = Instance.new("Motor6D")
-            weld.Name = "TFL_ToolWeld"
-            weld.Part0 = handle
-            weld.Part1 = rHand
-            weld.C0 = CFrame.new(-tool.GripPos.X, -tool.GripPos.Y, -tool.GripPos.Z)
-            weld.C1 = tool.Grip * CFrame.fromAxisAngle(Vector3.new(0,1,0), (i-1)*0.3)
-            weld.Parent = handle
-            state.toolWelds[tool] = weld
-            if not handle:GetAttribute("TFL_WasCanCollide") then
-                handle:SetAttribute("TFL_WasCanCollide", handle.CanCollide)
-            end
-            handle.CanCollide = false
-            handle.Massless = true
-        end
+
+    for i, tool in ipairs(rTools) do
+        weldTo(tool, rHand, CFrame.new(0, 0, 0) * CFrame.Angles(0, (i - 1) * 0.3, 0))
     end
-    for i,tool in ipairs(lTools) do
-        local handle = tool:FindFirstChild("Handle")
-        if handle then
-            removeToolWeld(tool)
-            local weld = Instance.new("Motor6D")
-            weld.Name = "TFL_ToolWeld"
-            weld.Part0 = handle
-            weld.Part1 = lHand
-            weld.C0 = CFrame.new(-tool.GripPos.X, -tool.GripPos.Y, -tool.GripPos.Z)
-            weld.C1 = tool.Grip
-            weld.Parent = handle
-            state.toolWelds[tool] = weld
-            if not handle:GetAttribute("TFL_WasCanCollide") then
-                handle:SetAttribute("TFL_WasCanCollide", handle.CanCollide)
-            end
-            handle.CanCollide = false
-            handle.Massless = true
-        end
+    for i, tool in ipairs(lTools) do
+        weldTo(tool, lHand, CFrame.new(0, 0, 0))
     end
 end
 
 local function removeAllWelds()
-    for _,tool in ipairs(state.toolsCache) do
+    local char = state.currentChar
+    if char then
+        local rHand = getRightHand(char)
+        local lHand = getLeftHand(char)
+        if rHand then clearHandGrips(rHand) end
+        if lHand then clearHandGrips(lHand) end
+    end
+    for _, tool in ipairs(state.toolsCache) do
         if tool then
             local handle = tool:FindFirstChild("Handle")
             if handle then
@@ -262,16 +228,17 @@ local function removeAllWelds()
     table.clear(state.toolWelds)
 end
 
+-- ================== EQUIP / CACHE ==================
 local function cacheTools()
     table.clear(state.toolsCache)
     local char = state.currentChar
     if not char then return end
     local count = 0
-    for _,tool in ipairs(char:GetChildren()) do
+    for _, tool in ipairs(char:GetChildren()) do
         if tool:IsA("Tool") then
             count = count + 1
             if count <= Config.MaxTools then
-                table.insert(state.toolsCache,tool)
+                table.insert(state.toolsCache, tool)
             end
         end
     end
@@ -283,7 +250,7 @@ local function equipAllTools()
     local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
     if not bp then return end
     local eq = 0
-    for _,tool in ipairs(bp:GetChildren()) do
+    for _, tool in ipairs(bp:GetChildren()) do
         if tool:IsA("Tool") and eq < Config.MaxTools then
             tool.Parent = char
             eq = eq + 1
@@ -294,7 +261,7 @@ end
 local function hasBackpackTools()
     local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
     if not bp then return false end
-    for _,c in ipairs(bp:GetChildren()) do
+    for _, c in ipairs(bp:GetChildren()) do
         if c:IsA("Tool") then return true end
     end
     return false
@@ -316,8 +283,7 @@ local function requestReequip()
     task.spawn(function()
         local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         state.currentChar = char
-        state.currentRoot = getHRP(char) or char:WaitForChild("HumanoidRootPart",5)
-        local deadline = os.clock()+3
+        local deadline = os.clock() + 3
         repeat
             if not state.active then return end
             if equipCacheAndWeld() and not hasBackpackTools() then return end
@@ -327,256 +293,65 @@ local function requestReequip()
     end)
 end
 
-local function getClosestTarget()
-    if not state.currentRoot then return nil end
-    local closest, bestDist = nil, 14
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            local char = plr.Character
-            if char then
-                local root = getHRP(char)
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if root and hum and hum.Health>0 then
-                    local d = (root.Position - state.currentRoot.Position).Magnitude
-                    if d < bestDist then
-                        bestDist = d
-                        closest = char
-                    end
-                end
-            end
-        end
-    end
-    return closest
-end
-
-local function touchAssist()
-    local target = getClosestTarget()
-    if not target then return end
-    local parts = {}
-    for _,name in ipairs({"HumanoidRootPart","UpperTorso","Torso","Head"}) do
-        local p = target:FindFirstChild(name)
-        if p and p:IsA("BasePart") then table.insert(parts,p) end
-    end
-    if #parts==0 then return end
-    for _,tool in ipairs(state.toolsCache) do
-        if tool and tool.Parent and tool:IsDescendantOf(workspace) then
-            local touch = getToolTouchPart(tool)
-            if touch then
-                for _,p in ipairs(parts) do
-                    pcall(firetouchinterest,touch,p,0)
-                    pcall(firetouchinterest,touch,p,1)
-                end
-            end
-        end
-    end
-end
-
+-- ================== ACTIVATION ==================
 local function activateTools()
-    for _,tool in ipairs(state.toolsCache) do
-        if tool and tool.Parent and tool:IsDescendantOf(workspace) then
-            local fe = tool:FindFirstChild("FightEvent",true)
-            if Config.Mode=="Normal" then
-                pcall(tool.Activate,tool)
-            elseif Config.Mode=="Event" then
-                if fe and fe:IsA("RemoteEvent") then pcall(fe.FireServer,fe) end
-            else
-                pcall(tool.Activate,tool)
-                if fe and fe:IsA("RemoteEvent") then pcall(fe.FireServer,fe) end
-            end
-        end
-    end
-end
-
-local function damagePulse()
-    activateTools()
-    touchAssist()
-end
-
--- ================== NO COOLDOWN (ALL MODES) ==================
-local function clearCooldownValues(tool)
-    local cd = tool:FindFirstChild("Cooldown")
-    if cd then if cd:IsA("IntValue") then cd.Value = 0 elseif cd:IsA("NumberValue") then cd.Value = 0 end end
-    local cm = tool:FindFirstChild("CooldownMax")
-    if cm then if cm:IsA("IntValue") then cm.Value = 0 elseif cm:IsA("NumberValue") then cm.Value = 0 end end
-    local ct = tool:FindFirstChild("CooldownTime")
-    if ct then if ct:IsA("IntValue") then ct.Value = 0 elseif ct:IsA("NumberValue") then ct.Value = 0 end end
-    local nu = tool:FindFirstChild("NextUse")
-    if nu and nu:IsA("NumberValue") then nu.Value = 0 end
-    local tc = tool:FindFirstChild("ToolCooldown")
-    if tc and tc:IsA("NumberValue") then tc.Value = 0 end
-    local cl = tool:FindFirstChild("CooldownLeft")
-    if cl and cl:IsA("NumberValue") then cl.Value = 0 end
-    local st = tool:FindFirstChild("LastUsed")
-    if st and st:IsA("StringValue") then st.Value = "0" end
-end
-
-local function clearModuleCooldowns(tool)
-    if tool:GetAttribute("OnCooldown") ~= nil then tool:SetAttribute("OnCooldown", false) end
-    if tool:GetAttribute("Cooldown") ~= nil then tool:SetAttribute("Cooldown", 0) end
-    if tool:GetAttribute("NextAttack") ~= nil then tool:SetAttribute("NextAttack", 0) end
-    if tool:GetAttribute("LastUse") ~= nil then tool:SetAttribute("LastUse", 0) end
-    for _, desc in ipairs(tool:GetDescendants()) do
-        if desc:IsA("IntValue") or desc:IsA("NumberValue") then
-            local n = desc.Name:lower()
-            if n:find("cooldown") or n:find("cooldownmax") or n:find("cooldowntime") or n:find("nextuse") then
-                pcall(function() desc.Value = 0 end)
-            end
-        elseif desc:IsA("BoolValue") and desc.Name:lower():find("cooldown") then
-            pcall(function() desc.Value = false end)
-        elseif desc:IsA("StringValue") and (desc.Name:lower():find("lastuse") or desc.Name:lower():find("timestamp")) then
-            pcall(function() desc.Value = "0" end)
-        end
-    end
-end
-
-local function remoteBypassCooldown(tool)
-    local fe = tool:FindFirstChild("FightEvent", true)
-    if fe and fe:IsA("RemoteEvent") then
-        pcall(fe.FireServer, fe)
-    end
-    local atk = tool:FindFirstChild("AttackEvent", true)
-    if atk and atk:IsA("RemoteEvent") then
-        pcall(atk.FireServer, atk)
-    end
-end
-
-local function cancelAnimations(tool)
-    local hum = tool.Parent and tool.Parent:FindFirstChildOfClass("Humanoid")
-    if hum then
-        for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
-            pcall(track.Stop, 0)
-        end
-    end
-    local animCtrl = tool:FindFirstChildOfClass("AnimationController")
-    if animCtrl then
-        for _, track in ipairs(animCtrl:GetPlayingAnimationTracks()) do
-            pcall(track.Stop, 0)
-        end
-    end
-end
-
-local function resetTags(tool)
-    for _, tag in ipairs(CollectionService:GetTags(tool)) do
-        if tag:lower():find("cooldown") or tag:lower():find("debounce") then
-            pcall(CollectionService.RemoveTag, tool, tag)
-        end
-    end
-    tool:SetAttribute("OnCooldown", false)
-    tool:SetAttribute("Cooldown", 0)
-    tool:SetAttribute("NextAttack", 0)
-    tool:SetAttribute("LastUse", 0)
-end
-
-local function clearCharacterCooldowns()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local cd = char:FindFirstChild("Cooldown")
-    if cd and cd:IsA("IntValue") then cd.Value = 0 end
-    local cm = char:FindFirstChild("CooldownMax")
-    if cm and cm:IsA("IntValue") then cm.Value = 0 end
-    local nu = char:FindFirstChild("NextUse")
-    if nu and nu:IsA("NumberValue") then nu.Value = 0 end
-    if char:GetAttribute("OnCooldown") ~= nil then char:SetAttribute("OnCooldown", false) end
-    if char:GetAttribute("Cooldown") ~= nil then char:SetAttribute("Cooldown", 0) end
-end
-
-local function performNoCooldown()
-    if not Config.NoCooldown then return end
-    clearCharacterCooldowns()
     for _, tool in ipairs(state.toolsCache) do
-        if tool and tool.Parent then
-            clearCooldownValues(tool)
-            clearModuleCooldowns(tool)
-            remoteBypassCooldown(tool)
-            cancelAnimations(tool)
-            resetTags(tool)
+        if tool and tool.Parent and tool:IsDescendantOf(workspace) then
+            pcall(tool.Activate, tool)
         end
+    end
+end
+
+-- ================== TOGGLE ==================
+local function stopAll()
+    removeAllWelds()
+    table.clear(state.toolsCache)
+    local character = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if character and backpack then
+        for _, item in ipairs(character:GetChildren()) do
+            if item:IsA("Tool") then
+                item.Parent = backpack
+            end
+        end
+    end
+    SlotBadge.Text = "0"
+end
+
+function toggle()
+    state.active = not state.active
+
+    if state.active then
+        ToolLabel.Text = "UseTools ON"
+        TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 255, 120)}):Play()
+        TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 255, 120)}):Play()
+        print("[Use Tools] ENABLED")
+        requestReequip()
+    else
+        ToolLabel.Text = "UseTools"
+        TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 50, 50)}):Play()
+        TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
+        print("[Use Tools] DISABLED")
+        stopAll()
     end
 end
 
 -- ================== MAIN LOOP ==================
 RunService.RenderStepped:Connect(function()
     if not state.active then return end
-    if not state.currentChar or not state.currentRoot or #state.toolsCache == 0 then
+    if not state.currentChar or #state.toolsCache == 0 then
         requestReequip()
         return
     end
     SlotBadge.Text = tostring(#state.toolsCache)
-    damagePulse()
-    performNoCooldown()
+    activateTools()
 end)
 
--- ================== UI INTERACTION ==================
-local function updatePanelPosition()
-    if ModePanel.Visible then
-        ModePanel.Position = UDim2.new(0, ToolFrame.AbsolutePosition.X, 0, ToolFrame.AbsolutePosition.Y + ToolFrame.AbsoluteSize.Y + 4)
-    end
-end
-
-ToolFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updatePanelPosition)
-ToolFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updatePanelPosition)
-
-InteractionButton.MouseButton1Click:Connect(function()
-    state.active = not state.active
-    Config.Enabled = state.active
-
-    ModePanel.Visible = state.active
-    updatePanelPosition()
-
-    if state.active then
-        TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 255, 120)}):Play()
-        TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 255, 120)}):Play()
-        requestReequip()
-    else
-        TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 50, 50)}):Play()
-        TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
-        removeAllWelds()
-        table.clear(state.toolsCache)
-        local character = LocalPlayer.Character
-        local backpack = LocalPlayer:FindFirstChild("Backpack")
-        if character and backpack then
-            for _, item in ipairs(character:GetChildren()) do
-                if item:IsA("Tool") then
-                    item.Parent = backpack
-                end
-            end
-        end
-        SlotBadge.Text = "0"
-    end
-    updateLabel()
-end)
-
-function updateLabel()
-    if state.active then
-        ToolLabel.Text = "UseTools (" .. Config.Mode .. ")"
-    else
-        ToolLabel.Text = "UseTools"
-    end
-end
-
-function cycleMode()
-    if not state.active then return end
-    local idx
-    for i, m in ipairs(MODES_ORDER) do
-        if m == Config.Mode then idx = i; break end
-    end
-    idx = idx or 1
-    idx = idx % #MODES_ORDER + 1
-    Config.Mode = MODES_ORDER[idx]
-    updateModeHighlight()
-    updateLabel()
-    print("[Use Tools] Mode:", Config.Mode)
-end
-
+-- ================== KEYBOARD FALLBACK ==================
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.K then
-        InteractionButton.MouseButton1Click:Fire()
-    elseif input.KeyCode == Enum.KeyCode.M then
-        cycleMode()
-    elseif input.KeyCode == Enum.KeyCode.X then
-        Config.NoCooldown = not Config.NoCooldown
-        print("[No Cooldown] " .. (Config.NoCooldown and "ENABLED (all modes)" or "DISABLED"))
+        toggle()
     end
 end)
 
@@ -584,16 +359,12 @@ end)
 LocalPlayer.CharacterAdded:Connect(function(char)
     if state.active then
         state.currentChar = char
-        state.currentRoot = getHRP(char)
         requestReequip()
     end
 end)
 
 if LocalPlayer.Character then
     state.currentChar = LocalPlayer.Character
-    state.currentRoot = getHRP(LocalPlayer.Character)
 end
 
-updateModeHighlight()
-updateLabel()
-print("[Use Tools] Compact UI with mode panel loaded. Click bar to toggle, M = cycle mode, X = no-cooldown.")
+print("[Use Tools] Mobile compact bar loaded. Tap the bar to toggle, drag to move.")
