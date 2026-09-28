@@ -1,0 +1,308 @@
+-- =========================================================================
+-- ⚡ AURA SUPREMACY CORE (ORIGINAL HIT LOGIC + MODERN SPECTRE DESIGN & LOCK)
+-- =========================================================================
+
+local auraRange = math.huge
+local auraSize = Vector3.new(30, 30, 30)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local lp = Players.LocalPlayer
+local PlayerGui = lp:WaitForChild("PlayerGui")
+
+-- Global state & Clean Garbage Collection
+if getgenv().configs then
+	for _, connection in ipairs(getgenv().configs.connections or {}) do
+		connection:Disconnect()
+	end
+end
+
+local Disable = Instance.new("BindableEvent")
+getgenv().configs = {
+	connections = {},
+	Disable = Disable,
+	Size = auraSize,
+	TargetList = {}, -- Original array style
+	TargetMap = {},  -- Internal lookup cache to guarantee player rows STAY selected
+}
+
+local Run = true
+local Ignorelist = OverlapParams.new()
+Ignorelist.FilterType = Enum.RaycastFilterType.Include
+
+-- ============================
+-- 🔧 Helper Functions (Original)
+-- ============================
+
+local function getchar(plr)
+	return (plr or lp).Character
+end
+
+local function GetTouchInterest(tool)
+	for _, obj in ipairs(tool:GetDescendants()) do
+		if obj:IsA("TouchTransmitter") and obj.Parent:IsA("BasePart") then
+			return obj.Parent
+		end
+	end
+end
+
+local function Attack(tool, touch, part)
+	if tool:IsDescendantOf(workspace) then
+		firetouchinterest(touch, part, 1)
+		firetouchinterest(touch, part, 0)
+	end
+end
+
+-- Disable hook
+table.insert(getgenv().configs.connections,
+	Disable.Event:Connect(function()
+		Run = false
+	end)
+)
+
+-- =========================================================================
+-- 🎨 NEO-SPECTRE RED GRAPHICAL USER INTERFACE
+-- =========================================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AuraSpectreUi"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = PlayerGui
+
+-- Main Screen Window Container (Draggable Wrapper)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.Size = UDim2.fromOffset(220, 42)
+MainFrame.Position = UDim2.new(0.5, -110, 0, 45)
+MainFrame.BackgroundColor3 = Color3.fromRGB(11, 6, 6)
+MainFrame.BorderSizePixel = 0
+
+local WindowCorner = Instance.new("UICorner", MainFrame)
+WindowCorner.CornerRadius = UDim.new(0, 8)
+
+local WindowStroke = Instance.new("UIStroke", MainFrame)
+WindowStroke.Color = Color3.fromRGB(240, 45, 45)
+WindowStroke.Thickness = 1.2
+WindowStroke.Transparency = 0.2
+
+-- === Toggle/Header Button ===
+local MenuHeaderBtn = Instance.new("TextButton")
+MenuHeaderBtn.Name = "MenuHeaderBtn"
+MenuHeaderBtn.Parent = MainFrame
+MenuHeaderBtn.Size = UDim2.new(1, 0, 0, 42)
+MenuHeaderBtn.BackgroundTransparency = 1
+MenuHeaderBtn.Text = "TARGET AURA"
+MenuHeaderBtn.Font = Enum.Font.GothamBold
+MenuHeaderBtn.TextSize = 13
+MenuHeaderBtn.TextColor3 = Color3.fromRGB(255, 235, 235)
+MenuHeaderBtn.AutoButtonColor = false
+
+-- === Scrolling List Frame ===
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "ScrollList"
+ScrollFrame.Parent = MainFrame
+ScrollFrame.Size = UDim2.new(1, -12, 0, 260)
+ScrollFrame.Position = UDim2.new(0, 6, 0, 48)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.Visible = false
+ScrollFrame.ScrollBarThickness = 2
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(240, 45, 45)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local ListLayout = Instance.new("UIListLayout", ScrollFrame)
+ListLayout.Padding = UDim.new(0, 5)
+ListLayout.SortOrder = Enum.SortOrder.Name
+
+-- Drag and Drop Functionality
+local Dragging, DragInput, DragStart, StartPos
+MenuHeaderBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		Dragging = true
+		DragStart = input.Position
+		StartPos = MainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then Dragging = false end
+		end)
+	end
+end)
+
+MenuHeaderBtn.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		DragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == DragInput and Dragging then
+		local Delta = input.Position - DragStart
+		MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
+	end
+end)
+
+-- =========================================================================
+-- 👥 STATE-RETENTION COMPILER
+-- =========================================================================
+
+local function CreateUserRow(player)
+	local RowBtn = Instance.new("TextButton")
+	RowBtn.Size = UDim2.new(1, -4, 0, 32)
+	RowBtn.Text = "  " .. player.Name
+	RowBtn.Font = Enum.Font.GothamMedium
+	RowBtn.TextSize = 12
+	RowBtn.TextXAlignment = Enum.TextXAlignment.Left
+	RowBtn.AutoButtonColor = false
+
+	local RowCorner = Instance.new("UICorner", RowBtn)
+	RowCorner.CornerRadius = UDim.new(0, 5)
+
+	local RowStroke = Instance.new("UIStroke", RowBtn)
+	RowStroke.Thickness = 1
+
+	local Indicator = Instance.new("Frame", RowBtn)
+	Indicator.Size = UDim2.fromOffset(4, 14)
+	Indicator.Position = UDim2.new(1, -12, 0.5, -7)
+	Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
+
+	-- Check structural persistence lookup maps to preserve dynamic UI selection states
+	if getgenv().configs.TargetMap[player.Name] then
+		RowBtn.BackgroundColor3 = Color3.fromRGB(38, 14, 14)
+		RowBtn.TextColor3 = Color3.fromRGB(255, 200, 200)
+		RowStroke.Color = Color3.fromRGB(240, 45, 45)
+		RowStroke.Transparency = 0.3
+		Indicator.BackgroundColor3 = Color3.fromRGB(255, 45, 45)
+	else
+		RowBtn.BackgroundColor3 = Color3.fromRGB(18, 10, 10)
+		RowBtn.TextColor3 = Color3.fromRGB(200, 180, 180)
+		RowStroke.Color = Color3.fromRGB(240, 45, 45)
+		RowStroke.Transparency = 0.7
+		Indicator.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+	end
+
+	-- Interaction Logic mapping dynamically back into the original TargetList array structure
+	RowBtn.MouseButton1Click:Connect(function()
+		local list = getgenv().configs.TargetList
+		local idx = table.find(list, player)
+
+		if idx then
+			table.remove(list, idx)
+			getgenv().configs.TargetMap[player.Name] = nil
+			TweenService:Create(RowBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(18, 10, 10)}):Play()
+			TweenService:Create(RowStroke, TweenInfo.new(0.15), {Transparency = 0.7}):Play()
+			TweenService:Create(Indicator, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 20, 20)}):Play()
+		else
+			table.insert(list, player)
+			getgenv().configs.TargetMap[player.Name] = player
+			TweenService:Create(RowBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(38, 14, 14)}):Play()
+			TweenService:Create(RowStroke, TweenInfo.new(0.15), {Transparency = 0.3}):Play()
+			TweenService:Create(Indicator, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 45, 45)}):Play()
+		end
+	end)
+
+	return RowBtn
+end
+
+local function RerenderPlayerPool()
+	for _, child in ipairs(ScrollFrame:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= lp then
+			CreateUserRow(player).Parent = ScrollFrame
+		end
+	end
+end
+
+-- UI Toggle Configuration
+MenuHeaderBtn.MouseButton1Click:Connect(function()
+	local isOpen = ScrollFrame.Visible
+	if not isOpen then
+		RerenderPlayerPool()
+		ScrollFrame.Visible = true
+		TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.fromOffset(220, 318)}):Play()
+	else
+		TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.fromOffset(220, 42)}):Play()
+		task.delay(0.2, function() ScrollFrame.Visible = false end)
+	end
+end)
+
+Players.PlayerAdded:Connect(RerenderPlayerPool)
+Players.PlayerRemoving:Connect(function(player)
+	local idx = table.find(getgenv().configs.TargetList, player)
+	if idx then table.remove(getgenv().configs.TargetList, idx) end
+	getgenv().configs.TargetMap[player.Name] = nil
+	RerenderPlayerPool()
+end)
+
+-- =========================================================================
+-- ⚡ TARGET AURA CORE (ORIGINAL LOOP LOGIC EXPORT)
+-- =========================================================================
+
+local lastFire = 0
+local FIRE_RATE = 1/35 -- stable sweet spot
+
+local function getTargets()
+	local t = {}
+	for _, plr in ipairs(getgenv().configs.TargetList) do
+		local char = plr.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			local hum = char:FindFirstChild("Humanoid")
+			if hum and hum.Health > 0 then
+				table.insert(t, char)
+			end
+		end
+	end
+	return t
+end
+
+local PRIORITY_PARTS = {
+	"HumanoidRootPart",
+	"Head",
+	"UpperTorso",
+	"LowerTorso"
+}
+
+local function hitTarget(tool, touch, char)
+	for i = 1, #PRIORITY_PARTS do
+		local part = char:FindFirstChild(PRIORITY_PARTS[i])
+		if part and part:IsA("BasePart") then
+			firetouchinterest(touch, part, 0)
+			firetouchinterest(touch, part, 1)
+		end
+	end
+end
+
+table.insert(getgenv().configs.connections, RunService.PreSimulation:Connect(function()
+	if not Run then return end
+	if #getgenv().configs.TargetList == 0 then return end
+
+	local now = os.clock()
+	if now - lastFire < FIRE_RATE then return end
+	lastFire = now
+
+	local char = getchar()
+	if not char then return end
+
+	local targets = getTargets()
+	if #targets == 0 then return end
+
+	-- Original yield behavior
+	RunService.PostSimulation:Wait()
+
+	for _, tool in ipairs(char:GetChildren()) do
+		if tool:IsA("Tool") then
+			local touch = GetTouchInterest(tool)
+			if not touch then continue end
+
+			for _, targetChar in ipairs(targets) do hitTarget(tool, touch, targetChar)
+end
+end
+end
+end))
+
+
