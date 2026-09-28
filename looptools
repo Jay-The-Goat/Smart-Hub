@@ -1,0 +1,281 @@
+-- [[ RE-ENGINEERED COMPLIANT APOLLYON V2 ]] --
+_G.FollowOffset = Vector3.new(0, 0.6, 0) 
+_G.AvoidCollisionOffset = Vector3.new(0, 0, 0.5)
+_G.PredictionWeight = 0.12
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local bringTargets = {}
+local heartbeatConnection = nil
+
+-- MULTI-LAYER CORE PERFORMANCE CACHE
+local cachedToolParts = {}
+local cachedTorsos = {}
+local cachedVelocities = {}
+
+local function getToolPart(tool)
+	if tool:FindFirstChild("Handle") and tool.Handle:IsA("BasePart") then return tool.Handle end
+	if tool.PrimaryPart and tool.PrimaryPart:IsA("BasePart") then return tool.PrimaryPart end
+	local fastCheck = tool:FindFirstChildWhichIsA("BasePart", true)
+	if fastCheck then return fastCheck end
+	for _, v in ipairs(tool:GetDescendants()) do
+		if v:IsA("BasePart") then return v end
+	end
+	return nil
+end
+
+local function updateToolCache()
+	table.clear(cachedToolParts)
+	local character = LocalPlayer.Character
+	if not character then return end
+	for _, tool in ipairs(character:GetChildren()) do
+		if tool:IsA("Tool") then
+			local part = getToolPart(tool)
+			if part then cachedToolParts[#cachedToolParts + 1] = part end
+		end
+	end
+end
+
+local function getCachedTargetData(char)
+	if cachedTorsos[char] and cachedTorsos[char].Parent then return cachedTorsos[char], cachedVelocities[char] end
+	local torso = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+	if torso then
+		cachedTorsos[char] = torso
+		cachedVelocities[char] = torso
+		return torso, torso
+	end
+	return nil, nil
+end
+
+local function optimizePartPhysics(part)
+	if not part or not part.Parent then return end
+	part.CanCollide = false
+	part.Massless = true
+	part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+end
+
+local function fixToolPhysics()
+	if not LocalPlayer.Character then return end
+	for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
+		if tool:IsA("Tool") then
+			local part = getToolPart(tool)
+			optimizePartPhysics(part)
+		end
+	end
+end
+
+local function processToolBringVectors(targetChar)
+	local targetRoot, velocityPart = getCachedTargetData(targetChar)
+	if not targetRoot or #cachedToolParts == 0 then return end
+	local targetVelocity = velocityPart.AssemblyLinearVelocity
+	local predictedPosition = targetRoot.Position + (targetVelocity * _G.PredictionWeight)
+	local finalPosition = predictedPosition + _G.FollowOffset + _G.AvoidCollisionOffset
+	for i = 1, #cachedToolParts do
+		local part = cachedToolParts[i]
+		if part and part.Parent then
+			part.Position = finalPosition
+			part.AssemblyLinearVelocity = targetVelocity * 1.5
+			firetouchinterest(part, targetRoot, 0)
+			firetouchinterest(part, targetRoot, 1)
+		end
+	end
+end
+
+local function stopHeartbeat()
+	if heartbeatConnection then
+		heartbeatConnection:Disconnect()
+		heartbeatConnection = nil
+	end
+end
+
+local function startFollowing()
+	if heartbeatConnection then return end
+	heartbeatConnection = RunService.PostSimulation:Connect(function()
+		if #bringTargets == 0 then stopHeartbeat() return end
+		if not LocalPlayer.Character then return end
+		for i = 1, #bringTargets do
+			local plr = Players:FindFirstChild(bringTargets[i])
+			if plr and plr.Character then processToolBringVectors(plr.Character) end
+		end
+	end)
+end
+
+---------------------------------------------------------
+-- ULTRA-STABLE DRAG-COMPLIANT INTERFACE SETUP
+---------------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "ApollyonEngineUI_Final"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+
+-- Safe Execution Environment Injection Check
+local success, err = pcall(function()
+	gui.Parent = CoreGui
+end)
+if not success then
+	gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- MAIN DASHBOARD WINDOW (STARTS CENTERED & VISIBLE)
+local frame = Instance.new("Frame")
+frame.Parent = gui
+frame.Position = UDim2.new(0.5, -115, 0.5, -150)
+frame.Size = UDim2.new(0, 230, 0, 300)
+frame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+frame.BackgroundTransparency = 0.15
+frame.Visible = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+local fStroke = Instance.new("UIStroke", frame)
+fStroke.Color = Color3.fromRGB(220, 40, 40)
+fStroke.Thickness = 2
+
+-- GLASS HEADER BAR
+local header = Instance.new("TextLabel")
+header.Parent = frame
+header.Size = UDim2.new(1, 0, 0, 35)
+header.BackgroundColor3 = Color3.fromRGB(20, 14, 14)
+header.Text = "APOLLYON v2"
+header.TextColor3 = Color3.fromRGB(255, 255, 255)
+header.Font = Enum.Font.GothamBold
+header.TextSize = 13
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 12)
+
+-- SIDE MENU TOGGLE BUTTON (ANCHORED DIRECTLY TO PANEL)
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Parent = gui
+toggleBtn.Size = UDim2.new(0, 40, 0, 40)
+toggleBtn.Position = UDim2.new(0.5, 125, 0.5, -150)
+toggleBtn.Text = "|||"
+toggleBtn.TextSize = 14
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+toggleBtn.TextColor3 = Color3.fromRGB(220, 40, 40)
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 10)
+local tStroke = Instance.new("UIStroke", toggleBtn)
+tStroke.Color = Color3.fromRGB(220, 40, 40)
+tStroke.Thickness = 1.5
+
+-- SMOOTH SCROLL CONTAINER
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Position = UDim2.new(0, 10, 0, 45)
+scroll.Size = UDim2.new(1, -20, 1, -55)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 2
+scroll.ScrollBarImageColor3 = Color3.fromRGB(220, 40, 40)
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 6)
+Instance.new("UIPadding", scroll).PaddingLeft = UDim.new(0, 2)
+
+-- MOBILE + PC DUAL-INPUT DRAG TRANSLATION ENGINE
+local dragging, dragInput, dragStart, startPos
+local btnStartPos
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		btnStartPos = toggleBtn.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+frame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		toggleBtn.Position = UDim2.new(btnStartPos.X.Scale, btnStartPos.X.Offset + delta.X, btnStartPos.Y.Scale, btnStartPos.Y.Offset + delta.Y)
+	end
+end)
+
+---------------------------------------------------------
+-- INTERFACE CORE LIST SYNCING
+---------------------------------------------------------
+local function refreshList()
+	for _, child in ipairs(scroll:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer then
+			local isTargeted = table.find(bringTargets, p.Name)
+			local btn = Instance.new("TextButton")
+			btn.Parent = scroll
+			btn.Size = UDim2.new(1, -5, 0, 32)
+			btn.Text = "  " .. p.DisplayName .. " (@" .. p.Name .. ")"
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 11
+			btn.TextXAlignment = Enum.TextXAlignment.Left
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+			
+			if isTargeted then
+				btn.BackgroundColor3 = Color3.fromRGB(45, 12, 12)
+				btn.TextColor3 = Color3.fromRGB(255, 60, 60)
+				local bStroke = Instance.new("UIStroke", btn)
+				bStroke.Color = Color3.fromRGB(220, 40, 40)
+				bStroke.Thickness = 1
+			else
+				btn.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+				btn.TextColor3 = Color3.fromRGB(170, 170, 180)
+			end
+			
+			btn.MouseEnter:Connect(function()
+				TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(28, 24, 30)}):Play()
+			end)
+			btn.MouseLeave:Connect(function()
+				TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = isTargeted and Color3.fromRGB(45, 12, 12) or Color3.fromRGB(18, 18, 22)}):Play()
+			end)
+			
+			btn.MouseButton1Click:Connect(function()
+				local idx = table.find(bringTargets, p.Name)
+				if idx then
+					table.remove(bringTargets, idx)
+					if #bringTargets == 0 then stopHeartbeat() end
+				else
+					table.insert(bringTargets, p.Name)
+					startFollowing()
+				end
+				refreshList()
+			end)
+		end
+	end
+	scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+end
+
+---------------------------------------------------------
+-- REPLICATION LIFECYCLE MANAGEMENT
+---------------------------------------------------------
+LocalPlayer.CharacterAdded:Connect(function(char)
+	char:WaitForChild("HumanoidRootPart")
+	task.spawn(updateToolCache)
+	char.ChildAdded:Connect(function(child)
+		if child:IsA("Tool") then
+			task.wait()
+			updateToolCache()
+			local part = getToolPart(child)
+			optimizePartPhysics(part)
+		end
+	end)
+	fixToolPhysics()
+end)
+
+Players.PlayerAdded:Connect(refreshList)
+Players.PlayerRemoving:Connect(refreshList)
+
+toggleBtn.MouseButton1Click:Connect(function()
+	frame.Visible = not frame.Visible
+	toggleBtn.TextColor3 = frame.Visible and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(220, 40, 40)
+	tStroke.Color = frame.Visible and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(220, 40, 40)
+end)
+
+task.spawn(updateToolCache)
+task.spawn(fixToolPhysics)
+refreshList()
