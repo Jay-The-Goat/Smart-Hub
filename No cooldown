@@ -1,76 +1,25 @@
---[[
-    ⚡ TFL Use Tools | Enterprise Edition
-    • Automatic execution without GUI/Hotkeys
-    • Zero-Cooldown Hooked Metamethods (Overclocked to PostSimulation)
-    • Zero lag, garbage collection optimized
---]]
-
-if not game:IsLoaded() then game.Loaded:Wait() end
-
--- Cache Services & Local Player
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+-- Utilizing RenderStepped hooks directly into the render sequence for the lowest client delay
+local renderSteppedEvent = RunService.RenderStepped
 
-local LocalPlayer = Players.LocalPlayer
-local PostSimulation = RunService.PostSimulation
+-- MAX SPEED UPGRADE: Localize the Wait method link directly into memory. 
+-- This completely bypasses Roblox table lookup overhead inside high-frequency loops.
+local fastWait = renderSteppedEvent.Wait
+local os_clock = os.clock
 
--- ================================================
--- ⚡ HIGH-PERFORMANCE COOLDOWN BYPASS (C-Level)
--- ================================================
-local oldWait = hookfunction(wait, function(n) 
-    return PostSimulation:Wait() 
-end)
-
-local oldTaskWait = hookfunction(task.wait, function(n) 
-    return PostSimulation:Wait() 
-end)
-
-hookfunction(delay, function(_, func) 
-    return task.spawn(func) 
-end)
-
-hookfunction(spawn, function(func) 
-    return task.spawn(func) 
-end)
-
--- Metamethod Hook for game:GetService("VirtualUser") or delay calls if applicable
-local oldNamecall
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    if method == "Wait" and (self == PostSimulation or self == RunService.Heartbeat) then
-        return PostSimulation:Wait()
-    end
-    return oldNamecall(self, ...)
-end)
-
-print("⚡ [TFL] Cooldown Overclocked Successfully - Zero-Lag Engine Active.")
-
--- ================================================
--- 🛠️ CONFIGURATION & STATE MANAGEMENT
--- ================================================
-local Config = {
-    Enabled = true,
-    MaxTools = 20,
-    TouchAssistRange = 14
-}
-
--- Prevent Memory Leaks on Re-Execution
-if shared._TFLToolLoop then 
-    shared._TFLToolLoop:Disconnect() 
+-- Optimized high-frequency execution yield
+local function hyperYield()
+    -- Bypasses index search by executing the pointer cleanly
+    local deltaTime = fastWait(renderSteppedEvent)
+    return deltaTime, os_clock() 
 end
 
--- ================================================
--- 🚀 CORE EXECUTOR (Optimized No-Lag Loop)
--- ================================================
-shared._TFLToolLoop = PostSimulation:Connect(function()
-    if not Config.Enabled then return end
-    
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool then
-        -- Native execution bypassing standard Lua VM delay cycles
-        tool:Activate()
-    end
-end)
+-- Hook legacy frame cycle
+if hookfunction and wait then
+    hookfunction(wait, hyperYield)
+end
+
+-- Hook modern framework task queue
+if hookfunction and task and task.wait then
+    hookfunction(task.wait, hyperYield)
+end
