@@ -1,6 +1,6 @@
 -- Configuración global y de conexiones
-local auraRange = 30
-local auraSize = Vector3.new(30, 30, 30) -- Tamaño mejorado para mayor precisión
+local auraRange = 10
+local auraSize = Vector3.new(10, 10, 10) -- Tamaño mejorado para mayor precisión
 local connections = getgenv().configs and getgenv().configs.connection
 
 -- Desactivación y limpieza de conexiones previas
@@ -118,7 +118,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- Segunda aura (manejo de herramientas especiales)
-local range = 30
+local range = 10
 RunService.RenderStepped:Connect(function()
     local char = getchar()
     for _, k in ipairs(Players:GetPlayers()) do
