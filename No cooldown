@@ -1,25 +1,28 @@
 local RunService = game:GetService("RunService")
--- Utilizing RenderStepped hooks directly into the render sequence for the lowest client delay
-local renderSteppedEvent = RunService.RenderStepped
+local heartbeat = RunService.Heartbeat
+local nativeWait = heartbeat.Wait
 
--- MAX SPEED UPGRADE: Localize the Wait method link directly into memory. 
--- This completely bypasses Roblox table lookup overhead inside high-frequency loops.
-local fastWait = renderSteppedEvent.Wait
-local os_clock = os.clock
+-- Tracks loop iterations to prevent Delta from locking up
+local loopCounter = 0
 
--- Optimized high-frequency execution yield
-local function hyperYield()
-    -- Bypasses index search by executing the pointer cleanly
-    local deltaTime = fastWait(renderSteppedEvent)
-    return deltaTime, os_clock() 
+local function freezeProofBypass()
+    loopCounter = loopCounter + 1
+    
+    -- Runs 200 iterations instantly. On the 201st, it yields for exactly one engine tick.
+    if loopCounter >= 200 then
+        loopCounter = 0
+        nativeWait(heartbeat) -- Micro-yield to prevent application freeze
+    end
+    
+    return 0
 end
 
--- Hook legacy frame cycle
+-- Hook legacy frame cycle securely
 if hookfunction and wait then
-    hookfunction(wait, hyperYield)
+    hookfunction(wait, freezeProofBypass)
 end
 
--- Hook modern framework task queue
+-- Hook modern framework task queue securely
 if hookfunction and task and task.wait then
-    hookfunction(task.wait, hyperYield)
+    hookfunction(task.wait, freezeProofBypass)
 end
