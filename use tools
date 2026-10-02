@@ -1,370 +1,434 @@
--- ============================================================
--- USE TOOLS — Core only + Mobile (Android / iOS)
--- Force-equips every tool in the backpack and welds them to hands
--- Compact draggable bar (tap = toggle) | K key (desktop)
--- ============================================================
+-- Delta Executor: True Futuristic Neon Glow System (Compact Auto-On Fixed Use Tools)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
-local Players           = game:GetService("Players")
-local RunService        = game:GetService("RunService")
-local UserInputService  = game:GetService("UserInputService")
-local CoreGui           = game:GetService("CoreGui")
-local TweenService      = game:GetService("TweenService")
+local player = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer
+-- Cyberpunk Neon Theme Properties Configuration
+local ThemeBg        = Color3.fromRGB(15, 22, 32)  
+local ContentCardBg  = Color3.fromRGB(18, 25, 35)  
+local NeonCyanAccent = Color3.fromRGB(0, 240, 255) 
+local NeonPurpleGlow = Color3.fromRGB(170, 0, 255) 
+local PassiveTextColor = Color3.fromRGB(255, 255, 255)
+local ActiveGreen    = Color3.fromRGB(85, 255, 140) 
+local InactiveMuted  = Color3.fromRGB(140, 150, 175)
 
--- ================== CONFIG ==================
-local Config = {
-    MaxTools = 20,
-}
+-- Clean up any existing GUI
+if CoreGui:FindFirstChild("SpamToolsGui") then
+	CoreGui.SpamToolsGui:Destroy()
+end
 
--- ================== STATE ==================
-local state = {
-    active      = false,
-    toolsCache  = {},
-    toolWelds   = {},
-    currentChar = nil,
-}
+-- GUI Setup Layer Containers
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SpamToolsGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
 
--- ================== GUI SETUP (original compact bar) ==================
-local DeltaUI = Instance.new("ScreenGui")
-DeltaUI.Name = "DeltaUseToolsSystem"
-DeltaUI.ResetOnSpawn = false
-DeltaUI.IgnoreGuiInset = true
-pcall(function() DeltaUI.Parent = CoreGui end)
-if not DeltaUI.Parent then DeltaUI.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+-- 1. Main Outer Panel Frame Container
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Size = UDim2.new(0, 185, 0, 32) 
+Container.Position = UDim2.new(1, -20, 0.5, -16) 
+Container.AnchorPoint = Vector2.new(1, 0.5) 
+Container.BackgroundTransparency = 1
+Container.Active = true 
+Container.Draggable = true 
+Container.Parent = ScreenGui
 
-local ToolFrame = Instance.new("Frame")
-ToolFrame.Name = "UseToolsBox"
-ToolFrame.Size = UDim2.new(0, 120, 0, 32)
-ToolFrame.Position = UDim2.new(1, -140, 0.4, 0)
-ToolFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToolFrame.Active = true
-ToolFrame.Parent = DeltaUI
+-- 2. "USE TOOLS" Core Main Toggle Box Structure (Renamed from SPAM TOOLS)
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Size = UDim2.new(1, -32, 1, 0)
+ToggleBtn.Position = UDim2.new(0, 0, 0, 0)
+ToggleBtn.BackgroundColor3 = ThemeBg
+ToggleBtn.Text = "USE TOOLS OFF"
+ToggleBtn.TextColor3 = NeonCyanAccent 
+ToggleBtn.Font = Enum.Font.GothamBold 
+ToggleBtn.TextSize = 11 
+ToggleBtn.AutoButtonColor = false
+ToggleBtn.Parent = Container
 
-local ToolCorner = Instance.new("UICorner")
-ToolCorner.CornerRadius = UDim.new(0, 5)
-ToolCorner.Parent = ToolFrame
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 8)
+ToggleCorner.Parent = ToggleBtn
 
-local ToolStroke = Instance.new("UIStroke")
-ToolStroke.Thickness = 1.5
-ToolStroke.Color = Color3.fromRGB(255, 50, 50)
-ToolStroke.Parent = ToolFrame
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Thickness = 2
+ToggleStroke.Color = NeonCyanAccent
+ToggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ToggleStroke.Parent = ToggleBtn
 
-local StatusDot = Instance.new("Frame")
-StatusDot.Size = UDim2.new(0, 8, 0, 8)
-StatusDot.Position = UDim2.new(0, 8, 0.5, -4)
-StatusDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-StatusDot.Parent = ToolFrame
+-- Dropdown Toggle Arrow Key Construction
+local DropdownArrowBtn = Instance.new("TextButton")
+DropdownArrowBtn.Name = "DropdownArrowBtn"
+DropdownArrowBtn.Size = UDim2.new(0, 26, 1, 0)
+DropdownArrowBtn.Position = UDim2.new(1, -26, 0, 0)
+DropdownArrowBtn.BackgroundColor3 = ThemeBg
+DropdownArrowBtn.Text = "▼"
+DropdownArrowBtn.TextColor3 = NeonCyanAccent
+DropdownArrowBtn.Font = Enum.Font.GothamBold
+DropdownArrowBtn.TextSize = 11
+DropdownArrowBtn.AutoButtonColor = false
+DropdownArrowBtn.Parent = Container
 
-local DotCorner = Instance.new("UICorner")
-DotCorner.CornerRadius = UDim.new(1, 0)
-DotCorner.Parent = StatusDot
+local ArrowCorner = Instance.new("UICorner")
+ArrowCorner.CornerRadius = UDim.new(0, 8)
+ArrowCorner.Parent = DropdownArrowBtn
 
-local ToolLabel = Instance.new("TextLabel")
-ToolLabel.Size = UDim2.new(1, -45, 1, 0)
-ToolLabel.Position = UDim2.new(0, 22, 0, 0)
-ToolLabel.BackgroundTransparency = 1
-ToolLabel.Text = "UseTools"
-ToolLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToolLabel.TextSize = 13
-ToolLabel.Font = Enum.Font.SourceSansItalic
-ToolLabel.TextXAlignment = Enum.TextXAlignment.Left
-ToolLabel.Parent = ToolFrame
+local ArrowStroke = Instance.new("UIStroke")
+ArrowStroke.Thickness = 2
+ArrowStroke.Color = NeonCyanAccent
+ArrowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ArrowStroke.Parent = DropdownArrowBtn
 
-local SlotBadge = Instance.new("TextLabel")
-SlotBadge.Size = UDim2.new(0, 16, 0, 16)
-SlotBadge.Position = UDim2.new(1, -22, 0.5, -8)
-SlotBadge.BackgroundColor3 = Color3.fromRGB(150, 0, 180)
-SlotBadge.Text = "0"
-SlotBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-SlotBadge.TextSize = 11
-SlotBadge.Font = Enum.Font.SourceSansBold
-SlotBadge.Parent = ToolFrame
+-- Sophisticated High-Fidelity Button Motion Effects Function (SIZE TWEAKS COMPLETELY REMOVED)
+local function addCyberpunkEffects(btn)
+	-- Size mutations have been stripped to keep button proportions fixed during rapid clicks
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(22, 30, 45)}):Play()
+	end)
 
-local BadgeCorner = Instance.new("UICorner")
-BadgeCorner.CornerRadius = UDim.new(0, 3)
-BadgeCorner.Parent = SlotBadge
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ThemeBg}):Play()
+	end)
+end
 
-local InteractionButton = Instance.new("TextButton")
-InteractionButton.Size = UDim2.new(1, 0, 1, 0)
-InteractionButton.BackgroundTransparency = 1
-InteractionButton.Text = ""
-InteractionButton.Parent = ToolFrame
+addCyberpunkEffects(ToggleBtn)
+addCyberpunkEffects(DropdownArrowBtn)
 
--- ================== DRAGGING (touch + mouse) ==================
-local dragging, dragStart, startPos, touchMoved
+-- 3. Dynamic Dropdown List Wrapper Frame 
+local DropdownFrame = Instance.new("Frame")
+DropdownFrame.Name = "DropdownFrame"
+DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+DropdownFrame.Position = UDim2.new(0, 0, 1, 6)
+DropdownFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22) 
+DropdownFrame.BorderSizePixel = 0
+DropdownFrame.ClipsDescendants = true
+DropdownFrame.Visible = false
+DropdownFrame.Parent = Container
 
-InteractionButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch
-    or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        touchMoved = false
-        dragStart = input.Position
-        startPos = ToolFrame.Position
-    end
+local DropdownCorner = Instance.new("UICorner")
+DropdownCorner.CornerRadius = UDim.new(0, 10)
+DropdownCorner.Parent = DropdownFrame
+
+local DropdownStroke = Instance.new("UIStroke")
+DropdownStroke.Thickness = 2
+DropdownStroke.Color = NeonPurpleGlow 
+DropdownStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+DropdownStroke.Parent = DropdownFrame
+
+local FrameGradient = Instance.new("UIGradient")
+FrameGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(16, 12, 26)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(9, 11, 16))
+})
+FrameGradient.Rotation = 45
+FrameGradient.Parent = DropdownFrame
+
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "ScrollFrame"
+ScrollFrame.Size = UDim2.new(1, -12, 1, -12)
+ScrollFrame.Position = UDim2.new(0, 6, 0, 6)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.ScrollBarThickness = 3
+ScrollFrame.ScrollBarImageColor3 = NeonPurpleGlow
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollFrame.Parent = DropdownFrame
+
+local UIList = Instance.new("UIListLayout")
+UIList.Parent = ScrollFrame
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 5) 
+
+UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y + 4)
 end)
 
-InteractionButton.InputChanged:Connect(function(input)
-    if not dragging then return end
-    if input.UserInputType == Enum.UserInputType.Touch
-    or input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        if math.abs(delta.X) > 4 or math.abs(delta.Y) > 4 then
-            touchMoved = true
-        end
-        ToolFrame.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
+-- Structural Logic Configuration States
+local active = false
+local menuOpen = false
+local selectedToolName = "All"
+local loopConn
+
+local function unequipAllTools()
+	local char = player.Character
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	
+	if char and backpack then
+		for _, tool in ipairs(char:GetChildren()) do
+			if tool:IsA("Tool") then
+				tool.Parent = backpack
+			end
+		end
+	end
+end
+
+-- ULTRA-SPEED LIGHTNING EQUIPMENT HOOK
+local function equipAndActivate()
+	if not active then return end
+	
+	local char = player.Character
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not char or not backpack then return end
+
+	if selectedToolName == "All" then
+		for _, tool in ipairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") then
+				tool.Parent = char
+			end
+		end
+
+		for _, tool in ipairs(char:GetChildren()) do
+			if tool:IsA("Tool") then
+				task.spawn(pcall, tool.Activate, tool)
+			end
+		end
+	else
+		for _, tool in ipairs(char:GetChildren()) do
+			if tool:IsA("Tool") and tool.Name ~= selectedToolName then
+				tool.Parent = backpack
+			end
+		end
+
+		local targetTool = backpack:FindFirstChild(selectedToolName) or char:FindFirstChild(selectedToolName)
+		if targetTool then
+			if targetTool.Parent ~= char then
+				targetTool.Parent = char
+			end
+			task.spawn(pcall, targetTool.Activate, targetTool)
+		end
+	end
+end
+
+local function refreshDropdownList()
+	for _, child in ipairs(ScrollFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+
+	local toolsFound = {"All Tools"}
+
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if backpack then
+		for _, tool in ipairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") and not table.find(toolsFound, tool.Name) then
+				table.insert(toolsFound, tool.Name)
+			end
+		end
+	end
+
+	local char = player.Character
+	if char then
+		for _, tool in ipairs(char:GetChildren()) do
+			if tool:IsA("Tool") and not table.find(toolsFound, tool.Name) then
+				table.insert(toolsFound, tool.Name)
+			end
+		end
+	end
+
+	for _, name in ipairs(toolsFound) do
+		local isSelected = (name == "All Tools" and selectedToolName == "All") or (name == selectedToolName)
+
+		local btn = Instance.new("TextButton")
+		btn.Name = name
+		btn.Size = UDim2.new(1, -2, 0, 28) 
+		btn.BackgroundColor3 = isSelected and Color3.fromRGB(32, 16, 48) or ContentCardBg
+		btn.BackgroundTransparency = 0.15
+		btn.Text = (isSelected and "★ " or "") .. name
+		btn.TextColor3 = isSelected and ActiveGreen or PassiveTextColor
+		btn.Font = Enum.Font.GothamMedium
+		btn.TextSize = 11
+		btn.AutoButtonColor = false
+		btn.Parent = ScrollFrame
+
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 5)
+		btnCorner.Parent = btn
+
+		local btnStroke = Instance.new("UIStroke")
+		btnStroke.Thickness = 1
+		btnStroke.Color = isSelected and NeonPurpleGlow or Color3.fromRGB(45, 52, 72)
+		btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		btnStroke.Parent = btn
+
+		btn.MouseEnter:Connect(function()
+			if not isSelected then
+				TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(24, 28, 40)}):Play()
+				TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = NeonCyanAccent}):Play()
+			end
+		end)
+
+		btn.MouseLeave:Connect(function()
+			if not isSelected then
+				TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ContentCardBg}):Play()
+				TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(45, 52, 72)}):Play()
+			end
+		end)
+
+		btn.MouseButton1Click:Connect(function()
+			if name == "All Tools" then
+				selectedToolName = "All"
+			else
+				selectedToolName = name
+				unequipAllTools()
+			end
+			refreshDropdownList()
+		end)
+	end
+end
+
+local function toggleDropdown()
+	menuOpen = not menuOpen
+
+	if menuOpen then
+		refreshDropdownList()
+		DropdownFrame.Visible = true
+		DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+
+		local buttonCount = #ScrollFrame:GetChildren() - 1
+		local calculatedHeight = math.clamp(buttonCount * 33 + 12, 45, 150)
+
+		DropdownArrowBtn.Text = "▲"
+
+		local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		TweenService:Create(DropdownFrame, tweenInfo, {
+			Size = UDim2.new(1, 0, 0, calculatedHeight)
+		}):Play()
+	else
+		DropdownArrowBtn.Text = "▼"
+		local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+		local tween = TweenService:Create(DropdownFrame, tweenInfo, {
+			Size = UDim2.new(1, 0, 0, 0)
+		})
+		tween:Play()
+		tween.Completed:Connect(function()
+			if not menuOpen then
+				DropdownFrame.Visible = false
+			end
+		end)
+	end
+end
+
+DropdownArrowBtn.MouseButton1Click:Connect(toggleDropdown)
+-- INSTANT RECOVERY & FORCE AUTO-ON ON RESPAWN MANAGER
+local function onCharacterCreated(newChar)
+local humanoid = newChar:WaitForChild("Humanoid", 10)
+if humanoid then
+humanoid.Died:Connect(function()
+if loopConn then loopConn:Disconnect() end
 end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if not dragging then return end
-    if input.UserInputType == Enum.UserInputType.Touch
-    or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-        if not touchMoved then
-            toggle()
-        end
-    end
+end
+active = true
+ToggleBtn.Text = "USE TOOLS ON"
+ToggleBtn.TextColor3 = ActiveGreen
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 35, 30)
+ToggleBtn.UIStroke.Color = ActiveGreen
+if loopConn then loopConn:Disconnect() end
+loopConn = RunService.RenderStepped:Connect(equipAndActivate)
+end
+player.CharacterAdded:Connect(onCharacterCreated)
+if player.Character then task.spawn(onCharacterCreated, player.Character) end
+ToggleBtn.MouseButton1Click:Connect(function()
+active = not active
+if active then
+ToggleBtn.Text = "USE TOOLS ON"
+ToggleBtn.TextColor3 = ActiveGreen
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 35, 30)
+ToggleBtn.UIStroke.Color = ActiveGreen
+if loopConn then loopConn:Disconnect() end
+loopConn = RunService.RenderStepped:Connect(equipAndActivate)
+else
+ToggleBtn.Text = "USE TOOLS OFF"
+ToggleBtn.TextColor3 = NeonCyanAccent
+ToggleBtn.BackgroundColor3 = ThemeBg
+ToggleBtn.UIStroke.Color = NeonCyanAccent
+if loopConn then
+loopConn:Disconnect()
+loopConn = nil
+end
+unequipAllTools()
+end
 end)
-
--- ================== HELPERS ==================
-local function getRightHand(c)
-    return c and (c:FindFirstChild("RightHand") or c:FindFirstChild("Right Arm"))
+-- ULTRA SPAMMER (INSTANT RE-EQUIP & ACTIVATE PERFORMANCE ENGINE)
+local auraRange = 50
+local auraSize = Vector3.new(50, 50, 50)
+local attackRate = 0.0001
+local running = true
+local auraParams = OverlapParams.new()
+auraParams.FilterType = Enum.RaycastFilterType.Include
+local function getChar(plr)
+return plr and plr.Character
 end
-local function getLeftHand(c)
-    return c and (c:FindFirstChild("LeftHand") or c:FindFirstChild("Left Arm"))
+local function getHRP(plr)
+local char = getChar(plr)
+return char and char:FindFirstChild("HumanoidRootPart")
 end
-
--- ================== WELDING ==================
-local function clearHandGrips(hand)
-    for _, v in ipairs(hand:GetChildren()) do
-        if v:IsA("Weld") and (v.Name == "RightGrip" or v.Name == "LeftGrip" or v.Name == "TFL_ToolWeld") then
-            v:Destroy()
-        end
-    end
+local function getValidTargets()
+local myHRP = getHRP(player)
+if not myHRP then return {}, {} end
+local playersInRange = {}
+local chars = {}
+for _, p in ipairs(Players:GetPlayers()) do
+if p ~= player then
+local hrp = getHRP(p)
+if hrp and (hrp.Position - myHRP.Position).Magnitude <= auraRange then
+table.insert(playersInRange, p)
+local char = getChar(p)
+if char then table.insert(chars, char) end
 end
-
-local function removeToolWeld(tool)
-    local w = state.toolWelds[tool]
-    if w and w.Parent then w:Destroy() end
-    state.toolWelds[tool] = nil
 end
-
-local function weldTo(tool, hand, offset)
-    local handle = tool:FindFirstChild("Handle")
-    if not handle or not hand then return end
-
-    removeToolWeld(tool)
-
-    local weld = Instance.new("Weld")
-    weld.Name = "TFL_ToolWeld"
-    weld.Part0 = hand
-    weld.Part1 = handle
-    weld.C0 = offset
-    weld.C1 = tool.Grip
-    weld.Parent = hand
-
-    state.toolWelds[tool] = weld
-
-    if not handle:GetAttribute("TFL_WasCanCollide") then
-        handle:SetAttribute("TFL_WasCanCollide", handle.CanCollide)
-    end
-    handle.CanCollide = false
-    handle.Massless = true
 end
-
-local function applyToolWelds()
-    if not state.currentChar or not state.active then return end
-    local char = state.currentChar
-    local rHand = getRightHand(char)
-    local lHand = getLeftHand(char)
-    if not rHand or not lHand then return end
-
-    clearHandGrips(rHand)
-    clearHandGrips(lHand)
-
-    local rTools, lTools = {}, {}
-    for _, tool in ipairs(state.toolsCache) do
-        local handle = tool and tool:FindFirstChild("Handle")
-        if handle and handle:IsA("BasePart") then
-            if tool.Name and tool.Name:lower():find("axe") then
-                table.insert(lTools, tool)
-            else
-                table.insert(rTools, tool)
-            end
-        end
-    end
-
-    for i, tool in ipairs(rTools) do
-        weldTo(tool, rHand, CFrame.new(0, 0, 0) * CFrame.Angles(0, (i - 1) * 0.3, 0))
-    end
-    for i, tool in ipairs(lTools) do
-        weldTo(tool, lHand, CFrame.new(0, 0, 0))
-    end
+return playersInRange, chars
 end
-
-local function removeAllWelds()
-    local char = state.currentChar
-    if char then
-        local rHand = getRightHand(char)
-        local lHand = getLeftHand(char)
-        if rHand then clearHandGrips(rHand) end
-        if lHand then clearHandGrips(lHand) end
-    end
-    for _, tool in ipairs(state.toolsCache) do
-        if tool then
-            local handle = tool:FindFirstChild("Handle")
-            if handle then
-                local wc = handle:GetAttribute("TFL_WasCanCollide")
-                if wc ~= nil then handle.CanCollide = wc end
-                handle.Massless = false
-            end
-            removeToolWeld(tool)
-        end
-    end
-    table.clear(state.toolWelds)
+local function getTouchPart(tool)
+local touchTransmitter = tool and tool:FindFirstChildWhichIsA("TouchTransmitter", true)
+return touchTransmitter and touchTransmitter.Parent
 end
-
--- ================== EQUIP / CACHE ==================
-local function cacheTools()
-    table.clear(state.toolsCache)
-    local char = state.currentChar
-    if not char then return end
-    local count = 0
-    for _, tool in ipairs(char:GetChildren()) do
-        if tool:IsA("Tool") then
-            count = count + 1
-            if count <= Config.MaxTools then
-                table.insert(state.toolsCache, tool)
-            end
-        end
-    end
+local function autoEquip(tool)
+if not tool:IsDescendantOf(workspace) then
+tool.Parent = getChar(player)
 end
-
-local function equipAllTools()
-    local char = state.currentChar
-    if not char then return end
-    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-    if not bp then return end
-    local eq = 0
-    for _, tool in ipairs(bp:GetChildren()) do
-        if tool:IsA("Tool") and eq < Config.MaxTools then
-            tool.Parent = char
-            eq = eq + 1
-        end
-    end
+tool:Activate()
 end
-
-local function hasBackpackTools()
-    local bp = LocalPlayer:FindFirstChildOfClass("Backpack")
-    if not bp then return false end
-    for _, c in ipairs(bp:GetChildren()) do
-        if c:IsA("Tool") then return true end
-    end
-    return false
+workspace:GetPartBoundsInBox(Vector3.new(0,0,0), Vector3.new(1,1,1))
+task.spawn(function()
+while true do
+local myChar = getChar(player)
+if not myChar or not myChar:FindFirstChild("Humanoid") or myChar.Humanoid.Health <= 0 then
+task.wait(0.01)
+continue
 end
-
-local function equipCacheAndWeld()
-    if not state.active then return false end
-    equipAllTools()
-    cacheTools()
-    if #state.toolsCache > 0 then
-        applyToolWelds()
-        return true
-    end
-    return false
+local targets, enemyChars = getValidTargets()
+auraParams.FilterDescendantsInstances = enemyChars
+for _, tool in ipairs(myChar:GetChildren()) do
+if tool:IsA("Tool") then
+local fightEvent = tool:FindFirstChild("FightEvent")
+local touchPart = getTouchPart(tool)
+if fightEvent then
+autoEquip(tool)
+fightEvent:FireServer()
 end
-
-local function requestReequip()
-    if not state.active then return end
-    task.spawn(function()
-        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        state.currentChar = char
-        local deadline = os.clock() + 3
-        repeat
-            if not state.active then return end
-            if equipCacheAndWeld() and not hasBackpackTools() then return end
-            RunService.Heartbeat:Wait()
-        until os.clock() >= deadline
-        equipCacheAndWeld()
-    end)
+if touchPart then
+local partsInBox = workspace:GetPartBoundsInBox(
+touchPart.CFrame,
+touchPart.Size + auraSize,
+auraParams
+)
+for _, part in ipairs(partsInBox) do
+local model = part:FindFirstAncestorWhichIsA("Model")
+if model and table.find(enemyChars, model) then
+firetouchinterest(touchPart, part, 1)
+firetouchinterest(touchPart, part, 0)
 end
-
--- ================== ACTIVATION ==================
-local function activateTools()
-    for _, tool in ipairs(state.toolsCache) do
-        if tool and tool.Parent and tool:IsDescendantOf(workspace) then
-            pcall(tool.Activate, tool)
-        end
-    end
 end
-
--- ================== TOGGLE ==================
-local function stopAll()
-    removeAllWelds()
-    table.clear(state.toolsCache)
-    local character = LocalPlayer.Character
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if character and backpack then
-        for _, item in ipairs(character:GetChildren()) do
-            if item:IsA("Tool") then
-                item.Parent = backpack
-            end
-        end
-    end
-    SlotBadge.Text = "0"
 end
-
-function toggle()
-    state.active = not state.active
-
-    if state.active then
-        ToolLabel.Text = "UseTools ON"
-        TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 255, 120)}):Play()
-        TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 255, 120)}):Play()
-        print("[Use Tools] ENABLED")
-        requestReequip()
-    else
-        ToolLabel.Text = "UseTools"
-        TweenService:Create(ToolStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 50, 50)}):Play()
-        TweenService:Create(StatusDot, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 50, 50)}):Play()
-        print("[Use Tools] DISABLED")
-        stopAll()
-    end
 end
-
--- ================== MAIN LOOP ==================
-RunService.RenderStepped:Connect(function()
-    if not state.active then return end
-    if not state.currentChar or #state.toolsCache == 0 then
-        requestReequip()
-        return
-    end
-    SlotBadge.Text = tostring(#state.toolsCache)
-    activateTools()
+end
+task.wait(attackRate)
+end
 end)
-
--- ================== KEYBOARD FALLBACK ==================
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if input.KeyCode == Enum.KeyCode.K then
-        toggle()
-    end
-end)
-
--- ================== CHARACTER HANDLING ==================
-LocalPlayer.CharacterAdded:Connect(function(char)
-    if state.active then
-        state.currentChar = char
-        requestReequip()
-    end
-end)
-
-if LocalPlayer.Character then
-    state.currentChar = LocalPlayer.Character
-end
-
-print("[Use Tools] Mobile compact bar loaded. Tap the bar to toggle, drag to move.")
+print("Compact Lightning Auto-On Use Tools Engine Online!")
