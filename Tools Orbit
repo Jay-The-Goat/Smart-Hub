@@ -1,16 +1,55 @@
--- Tool Orbit for Delta Executor (Project Delta)
--- Orbits ONLY equipped tools. Character never moves, never holds, never flies.
+-- =========================================================================
+-- 🪐 COMBINED ENGINE: iOS TOOL ORBIT + REALIGNED HOOKED NO-COOLDOWN
+-- =========================================================================
 
 local RADIUS = 6
-local SPEED = 0.98       -- 1.0 (4x) reduced by 2%
+local SPEED = 0.98       -- Kept exactly at your preferred 0.98 rate
 local HEIGHT_OFFSET = 0
+
+-- ⚙️ Change this to control speed. Bigger = slower. Adjusted to 0.12 for safety.
+local DELAY = 0.12
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local renderStepped = RunService.RenderStepped
+local os_clock = os.clock
 
 local character, hrp
 local angle = 0
+
+-- High-speed data caching register pointers
+local ipairs, table_insert = ipairs, table.insert
+
+-- =========================================================================
+-- 🔥 CUSTOM NO-COOLDOWN SECTION (ADJUSTED TIMING RATE)
+-- =========================================================================
+
+-- Save originals BEFORE hooking
+local originalWait = wait
+local originalTaskWait = task and task.wait
+local originalRSWait = renderStepped.Wait
+
+-- Wait at least DELAY seconds, but still yield each frame so Roblox doesn't hang
+local function slowWait()
+    local start = os_clock()
+    repeat
+        originalRSWait(renderStepped) -- this is what actually yields
+    until os_clock() - start >= DELAY
+    return os_clock() - start
+end
+
+if hookfunction and wait then
+    hookfunction(wait, slowWait)
+end
+
+if hookfunction and task and task.wait then
+    hookfunction(task.wait, slowWait)
+end
+
+-- =========================================================================
+-- 🪐 TOOL ORBIT SECTION
+-- =========================================================================
 
 local function bindCharacter(char)
     character = char
@@ -22,16 +61,20 @@ LocalPlayer.CharacterAdded:Connect(bindCharacter)
 local function getEquippedTools()
     local list = {}
     if not character then return list end
-    for _, item in ipairs(character:GetChildren()) do
+    local children = character:GetChildren()
+    for idx = 1, #children do
+        local item = children[idx]
         if item:IsA("Tool") and item:FindFirstChild("Handle") then
-            table.insert(list, item)
+            table_insert(list, item)
         end
     end
     return list
 end
 
 local function killWelds(container)
-    for _, c in ipairs(container:GetChildren()) do
+    local children = container:GetChildren()
+    for idx = 1, #children do
+        local c = children[idx]
         if c:IsA("Weld") or c:IsA("WeldConstraint") or c:IsA("Motor6D") then
             c:Destroy()
         end
@@ -40,9 +83,12 @@ end
 
 local function killGripsToHandles(handles)
     if not character then return end
-    for _, d in ipairs(character:GetDescendants()) do
+    local descendants = character:GetDescendants()
+    for idx = 1, #descendants do
+        local d = descendants[idx]
         if d:IsA("Weld") or d:IsA("WeldConstraint") or d:IsA("Motor6D") then
-            for _, h in ipairs(handles) do
+            for hIdx = 1, #handles do
+                local h = handles[hIdx]
                 if d.Part0 == h or d.Part1 == h then
                     d:Destroy()
                     break
@@ -60,15 +106,18 @@ RunService.RenderStepped:Connect(function()
     if count == 0 then return end
 
     local handles = {}
-    for _, tool in ipairs(tools) do
+    for idx = 1, #tools do
+        local tool = tools[idx]
         local h = tool:FindFirstChild("Handle")
-        if h then table.insert(handles, h) end
+        if h then table_insert(handles, h) end
     end
 
     killGripsToHandles(handles)
 
     angle = angle + SPEED
     if angle > math.pi * 2 then angle = angle - math.pi * 2 end
+
+    local centerCFrame = hrp.CFrame
 
     for i, tool in ipairs(tools) do
         local handle = tool:FindFirstChild("Handle")
@@ -83,7 +132,7 @@ RunService.RenderStepped:Connect(function()
             handle.RotVelocity = Vector3.zero
 
             local offsetAngle = angle + (i - 1) * (math.pi * 2 / count)
-            handle.CFrame = hrp.CFrame * CFrame.new(
+            handle.CFrame = centerCFrame * CFrame.new(
                 math.cos(offsetAngle) * RADIUS,
                 HEIGHT_OFFSET,
                 math.sin(offsetAngle) * RADIUS
@@ -92,4 +141,4 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("[Orbit Tools] Loaded — equipped-only orbit, 0.98 speed (4x minus 2%), character untouched.")
+print("[Re-aligned Script] Tool Orbit (0.98) and Hooked No-Cooldown with 0.12 delay loaded.")
