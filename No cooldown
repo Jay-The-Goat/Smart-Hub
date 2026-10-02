@@ -2,27 +2,27 @@ local RunService = game:GetService("RunService")
 local heartbeat = RunService.Heartbeat
 local nativeWait = heartbeat.Wait
 
--- Tracks loop iterations to prevent Delta from locking up
-local loopCounter = 0
+-- Optimized counter variable
+local iterations = 0
 
-local function freezeProofBypass()
-    loopCounter = loopCounter + 1
+local function doubleSpeedBypass()
+    iterations = iterations + 1
     
-    -- Runs 200 iterations instantly. On the 201st, it yields for exactly one engine tick.
-    if loopCounter >= 200 then
-        loopCounter = 0
-        nativeWait(heartbeat) -- Micro-yield to prevent application freeze
+    -- DOUBLED SPEED: Runs 400 iterations completely instantly before a single frame tick
+    if iterations % 400 == 0 then
+        iterations = 0
+        nativeWait(heartbeat) -- Micro-yield to keep Delta from freezing
     end
     
     return 0
 end
 
--- Hook legacy frame cycle securely
+-- Hook legacy frame cycle
 if hookfunction and wait then
-    hookfunction(wait, freezeProofBypass)
+    hookfunction(wait, doubleSpeedBypass)
 end
 
--- Hook modern framework task queue securely
+-- Hook modern framework task queue
 if hookfunction and task and task.wait then
-    hookfunction(task.wait, freezeProofBypass)
+    hookfunction(task.wait, doubleSpeedBypass)
 end
