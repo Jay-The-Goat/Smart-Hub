@@ -1,4 +1,4 @@
--- Delta Executor: Interactive Player Loop-Bring System (Neon Aesthetic)
+-- Delta Executor: True Futuristic Neon Glow System (Higher Top-Middle Edition)
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
@@ -9,96 +9,120 @@ local LocalPlayer = Players.LocalPlayer
 -- Initialize Main GUI Container
 local DeltaLoopGui = Instance.new("ScreenGui")
 DeltaLoopGui.Name = "DeltaLoopBringHUD"
+DeltaLoopGui.ResetOnSpawn = false
 DeltaLoopGui.Parent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
 
--- 1. Main Outer Panel (Now matches the clean compact design)
+-- 1. Main Outer Panel Container (Moved up to sit snugly near the top bar)
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "PlayersControlPanel"
-MainPanel.Size = UDim2.new(0, 195, 0, 75)
-MainPanel.Position = UDim2.new(0, 20, 0, 60) 
+MainPanel.Size = UDim2.new(0, 215, 0, 85)
+MainPanel.AnchorPoint = Vector2.new(0.5, 0)
+-- Shifted up from 55 to 35 pixels down to keep it tight to the top, but safe from being cut off
+MainPanel.Position = UDim2.new(0.5, 0, 0, 35) 
 MainPanel.BackgroundTransparency = 1
-MainPanel.Active = true
-MainPanel.Draggable = true 
+MainPanel.Active = false 
+MainPanel.Draggable = false -- COMPLETELY DISABLED DRAGGING MECHANIC
 MainPanel.Parent = DeltaLoopGui
 
--- 2. "PLAYERS" Trigger Box (Redesigned to mimic UseTools frame style)
+-- 2. "PLAYERS" Trigger Box 
 local PlayersLabelBox = Instance.new("Frame")
-PlayersLabelBox.Size = UDim2.new(0, 85, 0, 32)
-PlayersLabelBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Pitch black background
+PlayersLabelBox.Size = UDim2.new(0, 105, 0, 36)
+PlayersLabelBox.BackgroundColor3 = Color3.fromRGB(15, 22, 32)
 PlayersLabelBox.Parent = MainPanel
 
 local LabelCorner = Instance.new("UICorner")
-LabelCorner.CornerRadius = UDim.new(0, 5)
+LabelCorner.CornerRadius = UDim.new(0, 12)
 LabelCorner.Parent = PlayersLabelBox
 
--- Neon green accent outline exactly like UseTools
 local LabelStroke = Instance.new("UIStroke")
-LabelStroke.Thickness = 1.5
-LabelStroke.Color = Color3.fromRGB(0, 255, 120) -- Vibrant neon green
+LabelStroke.Thickness = 2.5
+LabelStroke.Color = Color3.fromRGB(0, 240, 255) -- Electric Neon Cyan
+LabelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 LabelStroke.Parent = PlayersLabelBox
 
 local TextButtonTrigger = Instance.new("TextButton")
 TextButtonTrigger.Size = UDim2.new(1, 0, 1, 0)
 TextButtonTrigger.BackgroundTransparency = 1
 TextButtonTrigger.Text = "PLAYERS"
-TextButtonTrigger.TextColor3 = Color3.fromRGB(255, 50, 50) -- Kept original red text name
-TextButtonTrigger.TextSize = 13
-TextButtonTrigger.Font = Enum.Font.SourceSansBold
+TextButtonTrigger.TextColor3 = Color3.fromRGB(0, 240, 255)
+TextButtonTrigger.TextSize = 14
+TextButtonTrigger.Font = Enum.Font.GothamBold
 TextButtonTrigger.Parent = PlayersLabelBox
 
--- Helper function to generate matching small control buttons
+-- Helper function to generate control buttons matching the layout perfectly
 local function createSmallButton(text, xPos, yPos)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 28, 0, 32)
+    local btn = Instance.new("Frame")
+    btn.Size = UDim2.new(0, 32, 0, 36)
     btn.Position = UDim2.new(0, xPos, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Pitch black matching style
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 16
-    btn.Font = Enum.Font.SourceSansBold
+    btn.BackgroundColor3 = Color3.fromRGB(15, 22, 32)
     
     local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 5)
+    btnCorner.CornerRadius = UDim.new(0, 10)
     btnCorner.Parent = btn
     
-    -- Matching neon-green stroke outline for side buttons
     local btnStroke = Instance.new("UIStroke")
-    btnStroke.Thickness = 1.5
-    btnStroke.Color = Color3.fromRGB(0, 255, 120)
+    btnStroke.Thickness = 2.5
+    btnStroke.Color = Color3.fromRGB(0, 240, 255)
     btnStroke.Parent = btn
     
+    local clicker = Instance.new("TextButton")
+    clicker.Size = UDim2.new(1, 0, 1, 0)
+    clicker.BackgroundTransparency = 1
+    clicker.Text = text
+    clicker.TextColor3 = Color3.fromRGB(0, 240, 255)
+    clicker.TextSize = 18
+    clicker.Font = Enum.Font.GothamBold
+    clicker.Parent = btn
+    
     btn.Parent = MainPanel
-    return btn
+    return clicker
 end
 
--- Construct the control button layout rows
-local PlusBtn  = createSmallButton("+", 95, 0)
-local LeftBtn  = createSmallButton("<", 130, 0)
-local RightBtn = createSmallButton(">", 165, 0)
-local MinusBtn = createSmallButton("-", 95, 38)
+-- Construct the control button layout rows exactly matching the picture's positions
+local PlusBtn  = createSmallButton("+", 115, 0)
+local LeftBtn  = createSmallButton("<", 152, 0)
+local RightBtn = createSmallButton(">", 189, 0)
+local MinusBtn = createSmallButton("-", 115, 44)
 
--- 3. Dynamic Dropdown List (Redesigned with the pitch black/neon theme)
-local DropdownFrame = Instance.new("ScrollingFrame")
-DropdownFrame.Size = UDim2.new(0, 160, 0, 150)
-DropdownFrame.Position = UDim2.new(0, 0, 0, 38)
-DropdownFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Pitch black background
+-- 3. Dynamic Dropdown List Frame (Upgraded with Neon Purple Glow Accents)
+local DropdownFrame = Instance.new("Frame")
+DropdownFrame.Size = UDim2.new(0, 370, 0, 205)
+DropdownFrame.Position = UDim2.new(0.5, -185, 0, 46) -- Stays centered exactly below the top controls
+DropdownFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
 DropdownFrame.Visible = false
-DropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-DropdownFrame.ScrollBarThickness = 4
 DropdownFrame.Parent = MainPanel
 
 local DropdownCorner = Instance.new("UICorner")
-DropdownCorner.CornerRadius = UDim.new(0, 5)
+DropdownCorner.CornerRadius = UDim.new(0, 14)
 DropdownCorner.Parent = DropdownFrame
 
 local DropdownStroke = Instance.new("UIStroke")
-DropdownStroke.Thickness = 1.5
-DropdownStroke.Color = Color3.fromRGB(0, 255, 120) -- Matching neon green outline
+DropdownStroke.Thickness = 3
+DropdownStroke.Color = Color3.fromRGB(170, 0, 255) -- Vivid purple neon magenta aura
 DropdownStroke.Parent = DropdownFrame
 
+-- Cyberpunk Gradient Backdrop for panel depth
+local FrameGradient = Instance.new("UIGradient")
+FrameGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(16, 12, 26)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(9, 11, 16))
+})
+FrameGradient.Rotation = 45
+FrameGradient.Parent = DropdownFrame
+
+-- Internal Scrolling Canvas Area
+local ScrollContent = Instance.new("ScrollingFrame")
+ScrollContent.Size = UDim2.new(1, -16, 1, -16)
+ScrollContent.Position = UDim2.new(0, 8, 0, 8)
+ScrollContent.BackgroundTransparency = 1
+ScrollContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollContent.ScrollBarThickness = 4
+ScrollContent.ScrollBarImageColor3 = Color3.fromRGB(170, 0, 255)
+ScrollContent.Parent = DropdownFrame
+
 local DropdownList = Instance.new("UIListLayout")
-DropdownList.Padding = UDim.new(0, 4)
-DropdownList.Parent = DropdownFrame
+DropdownList.Padding = UDim.new(0, 6)
+DropdownList.Parent = ScrollContent
 
 ----------------------------------------------------
 -- SYSTEM VARIABLES & CONFIGURATION STATE
@@ -108,114 +132,198 @@ local currentDistance = 5
 local directions = {"Front", "Back", "Left", "Right", "Above"}
 local currentDirIndex = 1 
 
+-- High-accuracy performance tracker updates
+local fpsTracker = 60
+RunService.RenderStepped:Connect(function(deltaTime)
+    fpsTracker = math.floor(1 / deltaTime)
+end)
+
+local activeTrackers = {}
+
 -- Toggle visibility layer for selection dropdown menu
 TextButtonTrigger.MouseButton1Click:Connect(function()
     DropdownFrame.Visible = not DropdownFrame.Visible
+    
+    for _, cleanup in pairs(activeTrackers) do
+        if cleanup.Connection then cleanup.Connection:Disconnect() end
+    end
+    activeTrackers = {}
+
     if DropdownFrame.Visible then
-        -- Clear prior rows
-        for _, child in ipairs(DropdownFrame:GetChildren()) do
-            if child:IsA("TextButton") then child:Destroy() end
+        -- Clear prior rows safely
+        for _, child in ipairs(ScrollContent:GetChildren()) do
+            if child:IsA("Frame") then child:Destroy() end
         end
         
         -- Map actively joined server lists dynamically
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
-                local pBtn = Instance.new("TextButton")
-                pBtn.Size = UDim2.new(1, 0, 0, 25)
-                -- Active text glows neon green, inactive sits dark
-                pBtn.BackgroundColor3 = targetLoopList[p.Name] and Color3.fromRGB(20, 50, 30) or Color3.fromRGB(15, 15, 15)
-                pBtn.Text = p.DisplayName or p.Name
-                pBtn.TextColor3 = targetLoopList[p.Name] and Color3.fromRGB(0, 255, 120) or Color3.fromRGB(240, 240, 240)
-                pBtn.TextSize = 12
-                pBtn.Font = Enum.Font.SourceSans
-                pBtn.Parent = DropdownFrame
-                
-                -- Toggle Target Status Handler on click
-                pBtn.MouseButton1Click:Connect(function()
-                    if targetLoopList[p.Name] then
-                        targetLoopList[p.Name] = nil
-                        pBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-                        pBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-                    else
-                        targetLoopList[p.Name] = p
-                        pBtn.BackgroundColor3 = Color3.fromRGB(20, 50, 30)
-                        pBtn.TextColor3 = Color3.fromRGB(0, 255, 120)
-                    end
-                end)
-            end
-        end
-        DropdownFrame.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
-    end
-end)
+                -- Container Row Frame
+                local RowFrame = Instance.new("Frame")
+                RowFrame.Name = p.Name .. "_Row"
+                RowFrame.Size = UDim2.new(1, -2, 0, 42)
+                RowFrame.BackgroundColor3 = targetLoopList[p.Name] and Color3.fromRGB(32, 16, 48) or Color3.fromRGB(18, 22, 32)
+                RowFrame.BackgroundTransparency = 0.1
+                RowFrame.Parent = ScrollContent
 
-----------------------------------------------------
--- OFFSET & POSITION ALIGNMENT CYCLING LOGIC
-----------------------------------------------------
-local function flashFeedback(button)
-    local btnStroke = button:FindFirstChildOfClass("UIStroke")
-    if btnStroke then
-        local oldColor = btnStroke.Color
-        btnStroke.Color = Color3.fromRGB(255, 255, 255) -- Flash border white on tap
-        task.wait(0.08)
-        btnStroke.Color = oldColor
-    end
+                local RowCorner = Instance.new("UICorner")
+                RowCorner.CornerRadius = UDim.new(0, 8)
+                RowCorner.Parent = RowFrame
+
+                local RowStroke = Instance.new("UIStroke")
+                RowStroke.Thickness = 1.2
+                RowStroke.Color = targetLoopList[p.Name] and Color3.fromRGB(170, 0, 255) or Color3.fromRGB(45, 52, 72)
+                RowStroke.Parent = RowFrame
+
+                -- User Display Text
+                local NameLabel = Instance.new("TextLabel")
+                NameLabel.Size = UDim2.new(0.38, 0, 1, 0)
+                NameLabel.Position = UDim2.new(0, 12, 0, 0)
+                NameLabel.BackgroundTransparency = 1
+                NameLabel.Text = p.DisplayName or p.Name
+                NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                NameLabel.TextSize = 13
+                NameLabel.Font = Enum.Font.GothamMedium
+                NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                NameLabel.Parent = RowFrame
+
+                -- Performance Monitoring Display Output
+                local PerfLabel = Instance.new("TextLabel")
+                PerfLabel.Size = UDim2.new(0.38, 0, 1, 0)
+                PerfLabel.Position = UDim2.new(0.38, 5, 0, 0)
+                PerfLabel.BackgroundTransparency = 1
+                PerfLabel.Text = "PING: --ms\nFPS: --"
+                PerfLabel.TextColor3 = Color3.fromRGB(0, 240, 255)
+                PerfLabel.TextSize = 11
+                PerfLabel.Font = Enum.Font.Code
+                PerfLabel.TextXAlignment = Enum.TextXAlignment.Left
+                PerfLabel.Parent = RowFrame
+
+                -- Status Indicator Label ("Active")
+                local StatusLabel = Instance.new("TextLabel")
+                StatusLabel.Size = UDim2.new(0.14, 0, 1, 0)
+                StatusLabel.Position = UDim2.new(0.76, -60, 0, 0)
+                StatusLabel.BackgroundTransparency = 1
+                StatusLabel.Text = "Active"
+                StatusLabel.TextColor3 = Color3.fromRGB(85, 255, 140)
+                StatusLabel.TextSize = 12
+                StatusLabel.Font = Enum.Font.GothamMedium
+                StatusLabel.TextXAlignment = Enum.TextXAlignment.Right
+                StatusLabel.Parent = RowFrame
+
+                -- Info Button Frame Graphic
+                local InfoBadge = Instance.new("Frame")
+                InfoBadge.Size = UDim2.new(0, 45, 0, 20)
+                InfoBadge.Position = UDim2.new(1, -55, 0.5, -10)
+                InfoBadge.BackgroundColor3 = Color3.fromRGB(15, 22, 32)
+                InfoBadge.Parent = RowFrame
+
+                local BadgeCorner = Instance.new("UICorner")
+                BadgeCorner.CornerRadius = UDim.new(0, 4)
+                BadgeCorner.Parent = InfoBadge
+
+                local BadgeStroke = Instance.new("UIStroke")
+                BadgeStroke.Thickness = 1
+                BadgeStroke.Color = Color3.fromRGB(45, 52, 72)
+                BadgeStroke.Parent = InfoBadge
+
+                local InfoText = Instance.new("TextLabel")
+                InfoText.Size = UDim2.new(1, 0, 1, 0)
+                InfoText.BackgroundTransparency = 1
+                InfoText.Text = "INFO"
+                InfoText.TextColor3 = Color3.fromRGB(140, 150, 175)
+                InfoText.TextSize = 10
+                InfoText.Font = Enum.Font.GothamBold
+                InfoText.Parent = InfoBadge
+
+                -- Transparent action clicker overlay mapping
+                local ActionButton = Instance.new("TextButton")
+ActionButton.Size = UDim2.new(1, 0, 1, 0)
+ActionButton.BackgroundTransparency = 1
+ActionButton.Text = ""
+ActionButton.Parent = RowFrame
+-- Continuous active telemetry refresh hook
+local pConnect
+pConnect = RunService.Heartbeat:Connect(function()
+if not p or not p.Parent then
+pConnect:Disconnect()
+return
 end
-
+local pingValue = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+PerfLabel.Text = string.format("PING: %dms\nFPS: %d", pingValue, fpsTracker)
+end)
+activeTrackers[p.Name] = {Connection = pConnect}
+-- Toggle Target Status Handler on selection
+ActionButton.MouseButton1Click:Connect(function()
+if targetLoopList[p.Name] then
+targetLoopList[p.Name] = nil
+RowFrame.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
+RowStroke.Color = Color3.fromRGB(45, 52, 72)
+else
+targetLoopList[p.Name] = p
+RowFrame.BackgroundColor3 = Color3.fromRGB(32, 16, 48)
+RowStroke.Color = Color3.fromRGB(170, 0, 255)
+end
+end)
+end
+end
+ScrollContent.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y + 10)
+end
+end)
+-- OFFSET & POSITION ALIGNMENT CYCLING LOGIC
+local function flashFeedback(button)
+local parentFrame = button.Parent
+local stroke = parentFrame:FindFirstChildOfClass("UIStroke")
+if stroke then
+local oldColor = stroke.Color
+stroke.Color = Color3.fromRGB(255, 255, 255)
+task.wait(0.08)
+stroke.Color = oldColor
+end
+end
 PlusBtn.MouseButton1Click:Connect(function()
-    currentDistance = math.clamp(currentDistance + 2, 2, 30)
-    flashFeedback(PlusBtn)
+currentDistance = math.clamp(currentDistance + 2, 2, 30)
+flashFeedback(PlusBtn)
 end)
-
 MinusBtn.MouseButton1Click:Connect(function()
-    currentDistance = math.clamp(currentDistance - 2, 2, 30)
-    flashFeedback(MinusBtn)
+currentDistance = math.clamp(currentDistance - 2, 2, 30)
+flashFeedback(MinusBtn)
 end)
-
 LeftBtn.MouseButton1Click:Connect(function()
-    currentDirIndex = currentDirIndex - 1
-    if currentDirIndex < 1 then currentDirIndex = #directions end
-    flashFeedback(LeftBtn)
-    print("Direction Shifted to: " .. directions[currentDirIndex])
+currentDirIndex = currentDirIndex - 1
+if currentDirIndex < 1 then currentDirIndex = #directions end
+flashFeedback(LeftBtn)
 end)
-
 RightBtn.MouseButton1Click:Connect(function()
-    currentDirIndex = currentDirIndex + 1
-    if currentDirIndex > #directions then currentDirIndex = 1 end
-    flashFeedback(RightBtn)
-    print("Direction Shifted to: " .. directions[currentDirIndex])
+currentDirIndex = currentDirIndex + 1
+if currentDirIndex > #directions then currentDirIndex = 1 end
+flashFeedback(RightBtn)
 end)
-
-----------------------------------------------------
 -- BACKGROUND ENGINE: CONTINUOUS LOOP-BRINGING LOOP
-----------------------------------------------------
 RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if root then
-        local selectedDirection = directions[currentDirIndex]
-        local positionalOffset = Vector3.new(0, 0, 0)
-        
-        if selectedDirection == "Front" then
-            positionalOffset = root.CFrame.LookVector * currentDistance
-        elseif selectedDirection == "Back" then
-            positionalOffset = -root.CFrame.LookVector * currentDistance
-        elseif selectedDirection == "Left" then
-            positionalOffset = -root.CFrame.RightVector * currentDistance
-        elseif selectedDirection == "Right" then
-            positionalOffset = root.CFrame.RightVector * currentDistance
-        elseif selectedDirection == "Above" then
-            positionalOffset = Vector3.new(0, currentDistance, 0)
-        end
-        
-        local chosenDestination = root.Position + positionalOffset
-        
-        for name, p in pairs(targetLoopList) do
-            if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local tRoot = p.Character.HumanoidRootPart
-                tRoot.Velocity = Vector3.new(0, 0, 0) 
-                tRoot.CFrame = CFrame.new(chosenDestination) * (root.CFrame - root.Position)
-            end
-        end
-    end
+local char = LocalPlayer.Character
+local root = char and char:FindFirstChild("HumanoidRootPart")
+if root then
+local selectedDirection = directions[currentDirIndex]
+local positionalOffset = Vector3.new(0, 0, 0)
+if selectedDirection == "Front" then
+positionalOffset = root.CFrame.LookVector * currentDistance
+elseif selectedDirection == "Back" then
+positionalOffset = -root.CFrame.LookVector * currentDistance
+elseif selectedDirection == "Left" then
+positionalOffset = -root.CFrame.RightVector * currentDistance
+elseif selectedDirection == "Right" then
+positionalOffset = root.CFrame.RightVector * currentDistance
+elseif selectedDirection == "Above" then
+positionalOffset = Vector3.new(0, currentDistance, 0)
+end
+local chosenDestination = root.Position + positionalOffset
+for name, p in pairs(targetLoopList) do
+if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+local tRoot = p.Character.HumanoidRootPart
+tRoot.Velocity = Vector3.new(0, 0, 0)
+tRoot.CFrame = CFrame.new(chosenDestination) * (root.CFrame - root.Position)
+end
+end
+end
 end)
