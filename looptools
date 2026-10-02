@@ -1,4 +1,4 @@
--- [[ RE-ENGINEERED COMPLIANT APOLLYON V2 ]] --
+-- [[ STANDALONE COMPLIANT APOLLYON V2 - CYBERPUNK COMPACT LEFT EDITION ]] --
 _G.FollowOffset = Vector3.new(0, 0.6, 0) 
 _G.AvoidCollisionOffset = Vector3.new(0, 0, 0.5)
 _G.PredictionWeight = 0.12
@@ -17,6 +17,14 @@ local heartbeatConnection = nil
 local cachedToolParts = {}
 local cachedTorsos = {}
 local cachedVelocities = {}
+
+-- Cyberpunk Neon Theme Properties Configuration
+local ThemeBg        = Color3.fromRGB(15, 22, 32)  
+local ContentCardBg  = Color3.fromRGB(18, 25, 35)  
+local NeonCyanAccent = Color3.fromRGB(0, 240, 255) 
+local NeonPurpleGlow = Color3.fromRGB(170, 0, 255) 
+local PassiveTextColor = Color3.fromRGB(255, 255, 255)
+local TargetRed      = Color3.fromRGB(255, 60, 90)
 
 local function getToolPart(tool)
 	if tool:FindFirstChild("Handle") and tool.Handle:IsA("BasePart") then return tool.Handle end
@@ -69,6 +77,13 @@ local function fixToolPhysics()
 	end
 end
 
+local function stopHeartbeat()
+	if heartbeatConnection then
+		heartbeatConnection:Disconnect()
+		heartbeatConnection = nil
+	end
+end
+
 local function processToolBringVectors(targetChar)
 	local targetRoot, velocityPart = getCachedTargetData(targetChar)
 	if not targetRoot or #cachedToolParts == 0 then return end
@@ -86,13 +101,6 @@ local function processToolBringVectors(targetChar)
 	end
 end
 
-local function stopHeartbeat()
-	if heartbeatConnection then
-		heartbeatConnection:Disconnect()
-		heartbeatConnection = nil
-	end
-end
-
 local function startFollowing()
 	if heartbeatConnection then return end
 	heartbeatConnection = RunService.PostSimulation:Connect(function()
@@ -106,176 +114,233 @@ local function startFollowing()
 end
 
 ---------------------------------------------------------
--- ULTRA-STABLE DRAG-COMPLIANT INTERFACE SETUP
+-- CYBERPUNK COMPACT LAYOUT CONFIGURATION (LEFT SIDE FLIP)
 ---------------------------------------------------------
+if CoreGui:FindFirstChild("ApollyonEngineUI_Final") then
+	CoreGui.ApollyonEngineUI_Final:Destroy()
+end
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "ApollyonEngineUI_Final"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
+gui.Parent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
 
--- Safe Execution Environment Injection Check
-local success, err = pcall(function()
-	gui.Parent = CoreGui
-end)
-if not success then
-	gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- 1. Main Outer Panel Frame Container (Moved entirely to the LEFT side of the screen)
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Size = UDim2.new(0, 185, 0, 32) 
+Container.Position = UDim2.new(0, 20, 0.5, -16) -- Left side position adjustment
+Container.AnchorPoint = Vector2.new(0, 0.5) -- Anchor point updated for left edge alignment
+Container.BackgroundTransparency = 1
+Container.Active = true 
+Container.Draggable = true 
+Container.Parent = gui
+
+-- 2. Main Executive Toggle Header 
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Size = UDim2.new(1, -32, 1, 0)
+ToggleBtn.Position = UDim2.new(0, 0, 0, 0)
+ToggleBtn.BackgroundColor3 = ThemeBg
+ToggleBtn.Text = "APOLLYON V2"
+ToggleBtn.TextColor3 = NeonCyanAccent 
+ToggleBtn.Font = Enum.Font.GothamBold 
+ToggleBtn.TextSize = 11 
+ToggleBtn.AutoButtonColor = false
+ToggleBtn.Parent = Container
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 8)
+ToggleCorner.Parent = ToggleBtn
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Thickness = 2
+ToggleStroke.Color = NeonCyanAccent
+ToggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ToggleStroke.Parent = ToggleBtn
+
+-- Dropdown Toggle Arrow Key Construction
+local DropdownArrowBtn = Instance.new("TextButton")
+DropdownArrowBtn.Name = "DropdownArrowBtn"
+DropdownArrowBtn.Size = UDim2.new(0, 26, 1, 0)
+DropdownArrowBtn.Position = UDim2.new(1, -26, 0, 0)
+DropdownArrowBtn.BackgroundColor3 = ThemeBg
+DropdownArrowBtn.Text = "▼"
+DropdownArrowBtn.TextColor3 = NeonCyanAccent
+DropdownArrowBtn.Font = Enum.Font.GothamBold
+DropdownArrowBtn.TextSize = 11
+DropdownArrowBtn.AutoButtonColor = false
+DropdownArrowBtn.Parent = Container
+local ArrowCorner = Instance.new("UICorner")
+ArrowCorner.CornerRadius = UDim.new(0, 8)
+ArrowCorner.Parent = DropdownArrowBtn
+
+local ArrowStroke = Instance.new("UIStroke")
+ArrowStroke.Thickness = 2
+ArrowStroke.Color = NeonCyanAccent
+ArrowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ArrowStroke.Parent = DropdownArrowBtn
+
+-- Size-Fixed Static Click Interaction Animators
+local function addCyberpunkEffects(btn)
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(22, 30, 45)}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ThemeBg}):Play()
+	end)
 end
+addCyberpunkEffects(ToggleBtn)
+addCyberpunkEffects(DropdownArrowBtn)
 
--- MAIN DASHBOARD WINDOW (STARTS CENTERED & VISIBLE)
-local frame = Instance.new("Frame")
-frame.Parent = gui
-frame.Position = UDim2.new(0.5, -115, 0.5, -150)
-frame.Size = UDim2.new(0, 230, 0, 300)
-frame.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-frame.BackgroundTransparency = 0.15
-frame.Visible = true
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-local fStroke = Instance.new("UIStroke", frame)
-fStroke.Color = Color3.fromRGB(220, 40, 40)
-fStroke.Thickness = 2
+-- 3. Dynamic Dropdown Player Scrolling Frame
+local DropdownFrame = Instance.new("Frame")
+DropdownFrame.Name = "DropdownFrame"
+DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+DropdownFrame.Position = UDim2.new(0, 0, 1, 6)
+DropdownFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22) 
+DropdownFrame.BorderSizePixel = 0
+DropdownFrame.ClipsDescendants = true
+DropdownFrame.Visible = false
+DropdownFrame.Parent = Container
+local DropdownCorner = Instance.new("UICorner")
+DropdownCorner.CornerRadius = UDim.new(0, 10)
+DropdownCorner.Parent = DropdownFrame
 
--- GLASS HEADER BAR
-local header = Instance.new("TextLabel")
-header.Parent = frame
-header.Size = UDim2.new(1, 0, 0, 35)
-header.BackgroundColor3 = Color3.fromRGB(20, 14, 14)
-header.Text = "APOLLYON v2"
-header.TextColor3 = Color3.fromRGB(255, 255, 255)
-header.Font = Enum.Font.GothamBold
-header.TextSize = 13
-Instance.new("UICorner", header).CornerRadius = UDim.new(0, 12)
+local DropdownStroke = Instance.new("UIStroke")
+DropdownStroke.Thickness = 2
+DropdownStroke.Color = NeonPurpleGlow 
+DropdownStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+DropdownStroke.Parent = DropdownFrame
 
--- SIDE MENU TOGGLE BUTTON (ANCHORED DIRECTLY TO PANEL)
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Parent = gui
-toggleBtn.Size = UDim2.new(0, 40, 0, 40)
-toggleBtn.Position = UDim2.new(0.5, 125, 0.5, -150)
-toggleBtn.Text = "|||"
-toggleBtn.TextSize = 14
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-toggleBtn.TextColor3 = Color3.fromRGB(220, 40, 40)
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 10)
-local tStroke = Instance.new("UIStroke", toggleBtn)
-tStroke.Color = Color3.fromRGB(220, 40, 40)
-tStroke.Thickness = 1.5
+local FrameGradient = Instance.new("UIGradient")
+FrameGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(16, 12, 26)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(9, 11, 16))
+})
+FrameGradient.Rotation = 45
+FrameGradient.Parent = DropdownFrame
 
--- SMOOTH SCROLL CONTAINER
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Position = UDim2.new(0, 10, 0, 45)
-scroll.Size = UDim2.new(1, -20, 1, -55)
-scroll.BackgroundTransparency = 1
-scroll.ScrollBarThickness = 2
-scroll.ScrollBarImageColor3 = Color3.fromRGB(220, 40, 40)
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "ScrollFrame"
+ScrollFrame.Size = UDim2.new(1, -12, 1, -12)
+ScrollFrame.Position = UDim2.new(0, 6, 0, 6)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.ScrollBarThickness = 3
+ScrollFrame.ScrollBarImageColor3 = NeonPurpleGlow
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollFrame.Parent = DropdownFrame
 
-local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = UDim.new(0, 6)
-Instance.new("UIPadding", scroll).PaddingLeft = UDim.new(0, 2)
-
--- MOBILE + PC DUAL-INPUT DRAG TRANSLATION ENGINE
-local dragging, dragInput, dragStart, startPos
-local btnStartPos
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = frame.Position
-		btnStartPos = toggleBtn.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then dragging = false end
-		end)
-	end
-end)
-frame.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		local delta = input.Position - dragStart
-		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		toggleBtn.Position = UDim2.new(btnStartPos.X.Scale, btnStartPos.X.Offset + delta.X, btnStartPos.Y.Scale, btnStartPos.Y.Offset + delta.Y)
-	end
-end)
+local UIList = Instance.new("UIListLayout")
+UIList.Parent = ScrollFrame
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 5) 
 
 ---------------------------------------------------------
 -- INTERFACE CORE LIST SYNCING
 ---------------------------------------------------------
 local function refreshList()
-	for _, child in ipairs(scroll:GetChildren()) do
+	for _, child in ipairs(ScrollFrame:GetChildren()) do
 		if child:IsA("TextButton") then child:Destroy() end
 	end
+	
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p ~= LocalPlayer then
 			local isTargeted = table.find(bringTargets, p.Name)
 			local btn = Instance.new("TextButton")
-			btn.Parent = scroll
-			btn.Size = UDim2.new(1, -5, 0, 32)
-			btn.Text = "  " .. p.DisplayName .. " (@" .. p.Name .. ")"
-			btn.Font = Enum.Font.Gotham
+			btn.Name = p.Name
+			btn.Size = UDim2.new(1, -2, 0, 28) 
+			btn.BackgroundColor3 = isTargeted and Color3.fromRGB(48, 16, 26) or ContentCardBg
+			btn.BackgroundTransparency = 0.15
+			btn.Text = (isTargeted and "☠ " or "") .. p.DisplayName
+			btn.TextColor3 = isTargeted and TargetRed or PassiveTextColor
+			btn.Font = Enum.Font.GothamMedium
 			btn.TextSize = 11
-			btn.TextXAlignment = Enum.TextXAlignment.Left
-			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-			
-			if isTargeted then
-				btn.BackgroundColor3 = Color3.fromRGB(45, 12, 12)
-				btn.TextColor3 = Color3.fromRGB(255, 60, 60)
-				local bStroke = Instance.new("UIStroke", btn)
-				bStroke.Color = Color3.fromRGB(220, 40, 40)
-				bStroke.Thickness = 1
-			else
-				btn.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-				btn.TextColor3 = Color3.fromRGB(170, 170, 180)
-			end
-			
+			btn.AutoButtonColor = false
+			btn.Parent = ScrollFrame
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+
+			local btnStroke = Instance.new("UIStroke")
+			btnStroke.Thickness = 1
+			btnStroke.Color = isTargeted and TargetRed or Color3.fromRGB(45, 52, 72)
+			btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			btnStroke.Parent = btn
+
 			btn.MouseEnter:Connect(function()
-				TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(28, 24, 30)}):Play()
+				if not isTargeted then
+					TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(24, 28, 40)}):Play()
+					TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = NeonCyanAccent}):Play()
+				end
 			end)
 			btn.MouseLeave:Connect(function()
-				TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = isTargeted and Color3.fromRGB(45, 12, 12) or Color3.fromRGB(18, 18, 22)}):Play()
-			end)
-			
-			btn.MouseButton1Click:Connect(function()
-				local idx = table.find(bringTargets, p.Name)
-				if idx then
-					table.remove(bringTargets, idx)
-					if #bringTargets == 0 then stopHeartbeat() end
-				else
-					table.insert(bringTargets, p.Name)
-					startFollowing()
-				end
-				refreshList()
-			end)
-		end
-	end
-	scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+if not isTargeted then
+TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ContentCardBg}):Play()
+TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(45, 52, 72)}):Play()
 end
-
----------------------------------------------------------
--- REPLICATION LIFECYCLE MANAGEMENT
----------------------------------------------------------
-LocalPlayer.CharacterAdded:Connect(function(char)
-	char:WaitForChild("HumanoidRootPart")
-	task.spawn(updateToolCache)
-	char.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") then
-			task.wait()
-			updateToolCache()
-			local part = getToolPart(child)
-			optimizePartPhysics(part)
-		end
-	end)
-	fixToolPhysics()
 end)
-
+btn.MouseButton1Click:Connect(function()
+local idx = table.find(bringTargets, p.Name)
+if idx then
+table.remove(bringTargets, idx)
+if #bringTargets == 0 then stopHeartbeat() end
+else
+table.insert(bringTargets, p.Name)
+startFollowing()
+end
+refreshList()
+end)
+end
+end
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y + 4)
+end
+local menuOpen = false
+local function toggleDropdown()
+menuOpen = not menuOpen
+if menuOpen then
+refreshList()
+DropdownFrame.Visible = true
+DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+local buttonCount = #ScrollFrame:GetChildren() - 1
+local calculatedHeight = math.clamp(buttonCount * 33 + 12, 45, 150)
+DropdownArrowBtn.Text = "▲"
+TweenService:Create(DropdownFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+Size = UDim2.new(1, 0, 0, calculatedHeight)
+}):Play()
+else
+DropdownArrowBtn.Text = "▼"
+local tween = TweenService:Create(DropdownFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+Size = UDim2.new(1, 0, 0, 0)
+})
+tween:Play()
+tween.Completed:Connect(function()
+if not menuOpen then DropdownFrame.Visible = false end
+end)
+end
+end
+DropdownArrowBtn.MouseButton1Click:Connect(toggleDropdown)
+ToggleBtn.MouseButton1Click:Connect(toggleDropdown)
+-- REPLICATION LIFECYCLE MANAGEMENT
+local function onCharacterCreated(char)
+char:WaitForChild("HumanoidRootPart")
+task.spawn(updateToolCache)
+char.ChildAdded:Connect(function(child)
+if child:IsA("Tool") then
+task.wait()
+updateToolCache()
+local part = getToolPart(child)
+optimizePartPhysics(part)
+end
+end)
+fixToolPhysics()
+if #bringTargets > 0 then
+startFollowing()
+end
+end
+LocalPlayer.CharacterAdded:Connect(onCharacterCreated)
+if LocalPlayer.Character then task.spawn(onCharacterCreated, LocalPlayer.Character) end
 Players.PlayerAdded:Connect(refreshList)
 Players.PlayerRemoving:Connect(refreshList)
-
-toggleBtn.MouseButton1Click:Connect(function()
-	frame.Visible = not frame.Visible
-	toggleBtn.TextColor3 = frame.Visible and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(220, 40, 40)
-	tStroke.Color = frame.Visible and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(220, 40, 40)
-end)
-
 task.spawn(updateToolCache)
 task.spawn(fixToolPhysics)
 refreshList()
