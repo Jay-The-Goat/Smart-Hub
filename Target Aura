@@ -1,5 +1,5 @@
 -- =========================================================================
--- ⚡ AURA SUPREMACY CORE (ORIGINAL HIT LOGIC + MODERN SPECTRE DESIGN & LOCK)
+-- ⚡ AURA SUPREMACY CORE (COMPACT CYBERPUNK EDITION + REVENGE ENGINE - POSITIONED RIGHT)
 -- =========================================================================
 
 local auraRange = math.huge
@@ -9,9 +9,19 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
 local lp = Players.LocalPlayer
 local PlayerGui = lp:WaitForChild("PlayerGui")
+
+-- Cyberpunk Neon Theme Global Properties
+local ThemeBg        = Color3.fromRGB(15, 22, 32)  
+local ContentCardBg  = Color3.fromRGB(18, 25, 35)  
+local NeonCyanAccent = Color3.fromRGB(0, 240, 255) 
+local NeonPurpleGlow = Color3.fromRGB(170, 0, 255) 
+local PassiveTextColor = Color3.fromRGB(255, 255, 255)
+local ActiveGreen    = Color3.fromRGB(85, 255, 140) 
+local TargetRed      = Color3.fromRGB(255, 60, 90)
 
 -- Global state & Clean Garbage Collection
 if getgenv().configs then
@@ -20,13 +30,17 @@ if getgenv().configs then
 	end
 end
 
+if PlayerGui:FindFirstChild("AuraSpectreUi") then
+	PlayerGui.AuraSpectreUi:Destroy()
+end
+
 local Disable = Instance.new("BindableEvent")
 getgenv().configs = {
 	connections = {},
 	Disable = Disable,
 	Size = auraSize,
-	TargetList = {}, -- Original array style
-	TargetMap = {},  -- Internal lookup cache to guarantee player rows STAY selected
+	TargetList = {}, 
+	TargetMap = {},  
 }
 
 local Run = true
@@ -56,94 +70,185 @@ local function Attack(tool, touch, part)
 	end
 end
 
--- Disable hook
 table.insert(getgenv().configs.connections,
 	Disable.Event:Connect(function()
 		Run = false
 	end)
 )
 
+-- Forward declaration for interface rendering updates
+local RerenderPlayerPool
+
 -- =========================================================================
--- 🎨 NEO-SPECTRE RED GRAPHICAL USER INTERFACE
+-- 🦾 AUTOMATED RETALIATION ENGINE (ANTI-KILL OVERRIDE)
+-- =========================================================================
+local function trackRetaliation(character)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if not humanoid then return end
+	
+	humanoid.Died:Connect(function()
+		local creatorTag = character:FindFirstChild("creator") or humanoid:FindFirstChild("creator")
+		local killerPlayer = nil
+		
+		if creatorTag and creatorTag:IsA("ObjectValue") and creatorTag.Value and creatorTag.Value:IsA("Player") then
+			killerPlayer = creatorTag.Value
+		else
+			local myHRP = character:FindFirstChild("HumanoidRootPart")
+			if myHRP then
+				local closestDist = 25 
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						local tool = p.Character:FindFirstChildWhichIsA("Tool")
+						if tool then
+							local dist = (p.Character.HumanoidRootPart.Position - myHRP.Position).Magnitude
+							if dist < closestDist then
+								closestDist = dist
+								killerPlayer = p
+							end
+						end
+					end
+				end
+			end
+		end
+		
+		if killerPlayer and killerPlayer ~= lp then
+			local list = getgenv().configs.TargetList
+			if not table.find(list, killerPlayer) then
+				table.insert(list, killerPlayer)
+				getgenv().configs.TargetMap[killerPlayer.Name] = killerPlayer
+				print("Retaliation Active: Locked onto killer -> " .. killerPlayer.Name)
+				
+				pcall(function()
+					RerenderPlayerPool()
+				end)
+			end
+		end
+	end)
+end
+
+lp.CharacterAdded:Connect(trackRetaliation)
+if lp.Character then task.spawn(trackRetaliation, lp.Character) end
+
+-- =========================================================================
+-- 🎨 CYBERPUNK COMPACT LAYOUT CONFIGURATION (SHIFTED TO RIGHT SIDE OVER INVENTORY)
 -- =========================================================================
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AuraSpectreUi"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = PlayerGui
+ScreenGui.Parent = CoreGui:FindFirstChild("RobloxGui") or PlayerGui
 
--- Main Screen Window Container (Draggable Wrapper)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.fromOffset(220, 42)
-MainFrame.Position = UDim2.new(0.5, -110, 0, 45)
-MainFrame.BackgroundColor3 = Color3.fromRGB(11, 6, 6)
-MainFrame.BorderSizePixel = 0
+-- 1. Main Outer Panel Frame Container (Flipped to Right Edge and Elevated slightly at Y = -50)
+local Container = Instance.new("Frame")
+Container.Name = "Container"
+Container.Size = UDim2.new(0, 185, 0, 32) 
+Container.AnchorPoint = Vector2.new(1, 0.5) -- Changed alignment anchor to track right-side frames
+Container.Position = UDim2.new(1, -20, 0.5, -50) -- Standardized right margin alignment mapping
+Container.BackgroundTransparency = 1
+Container.Active = true 
+Container.Draggable = true 
+Container.Parent = ScreenGui
 
-local WindowCorner = Instance.new("UICorner", MainFrame)
-WindowCorner.CornerRadius = UDim.new(0, 8)
-
-local WindowStroke = Instance.new("UIStroke", MainFrame)
-WindowStroke.Color = Color3.fromRGB(240, 45, 45)
-WindowStroke.Thickness = 1.2
-WindowStroke.Transparency = 0.2
-
--- === Toggle/Header Button ===
+-- 2. "TARGET AURA" Executive Toggle Header
 local MenuHeaderBtn = Instance.new("TextButton")
 MenuHeaderBtn.Name = "MenuHeaderBtn"
-MenuHeaderBtn.Parent = MainFrame
-MenuHeaderBtn.Size = UDim2.new(1, 0, 0, 42)
-MenuHeaderBtn.BackgroundTransparency = 1
+MenuHeaderBtn.Size = UDim2.new(1, -32, 1, 0)
+MenuHeaderBtn.Position = UDim2.new(0, 0, 0, 0)
+MenuHeaderBtn.BackgroundColor3 = ThemeBg
 MenuHeaderBtn.Text = "TARGET AURA"
 MenuHeaderBtn.Font = Enum.Font.GothamBold
-MenuHeaderBtn.TextSize = 13
-MenuHeaderBtn.TextColor3 = Color3.fromRGB(255, 235, 235)
+MenuHeaderBtn.TextSize = 11
+MenuHeaderBtn.TextColor3 = NeonCyanAccent
 MenuHeaderBtn.AutoButtonColor = false
+MenuHeaderBtn.Parent = Container
 
--- === Scrolling List Frame ===
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(0, 8)
+ToggleCorner.Parent = MenuHeaderBtn
+
+local ToggleStroke = Instance.new("UIStroke")
+ToggleStroke.Thickness = 2
+ToggleStroke.Color = NeonCyanAccent
+ToggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ToggleStroke.Parent = MenuHeaderBtn
+
+-- Dropdown Toggle Arrow Key Construction
+local DropdownArrowBtn = Instance.new("TextButton")
+DropdownArrowBtn.Name = "DropdownArrowBtn"
+DropdownArrowBtn.Size = UDim2.new(0, 26, 1, 0)
+DropdownArrowBtn.Position = UDim2.new(1, -26, 0, 0)
+DropdownArrowBtn.BackgroundColor3 = ThemeBg
+DropdownArrowBtn.Text = "▼"
+DropdownArrowBtn.TextColor3 = NeonCyanAccent
+DropdownArrowBtn.Font = Enum.Font.GothamBold
+DropdownArrowBtn.TextSize = 11
+DropdownArrowBtn.AutoButtonColor = false
+DropdownArrowBtn.Parent = Container
+
+local ArrowCorner = Instance.new("UICorner")
+ArrowCorner.CornerRadius = UDim.new(0, 8)
+ArrowCorner.Parent = DropdownArrowBtn
+
+local ArrowStroke = Instance.new("UIStroke")
+ArrowStroke.Thickness = 2
+ArrowStroke.Color = NeonCyanAccent
+ArrowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ArrowStroke.Parent = DropdownArrowBtn
+
+local function addCyberpunkEffects(btn)
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(22, 30, 45)}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = ThemeBg}):Play()
+	end)
+end
+addCyberpunkEffects(MenuHeaderBtn)
+addCyberpunkEffects(DropdownArrowBtn)
+
+local DropdownFrame = Instance.new("Frame")
+DropdownFrame.Name = "DropdownFrame"
+DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+DropdownFrame.Position = UDim2.new(0, 0, 1, 6)
+DropdownFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 22) 
+DropdownFrame.BorderSizePixel = 0
+DropdownFrame.ClipsDescendants = true
+DropdownFrame.Visible = false
+DropdownFrame.Parent = Container
+
+local DropdownCorner = Instance.new("UICorner")
+DropdownCorner.CornerRadius = UDim.new(0, 10)
+DropdownCorner.Parent = DropdownFrame
+
+local DropdownStroke = Instance.new("UIStroke")
+DropdownStroke.Thickness = 2
+DropdownStroke.Color = NeonPurpleGlow 
+DropdownStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+DropdownStroke.Parent = DropdownFrame
+
+local FrameGradient = Instance.new("UIGradient")
+FrameGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(16, 12, 26)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(9, 11, 16))
+})
+FrameGradient.Rotation = 45
+FrameGradient.Parent = DropdownFrame
+
 local ScrollFrame = Instance.new("ScrollingFrame")
 ScrollFrame.Name = "ScrollList"
-ScrollFrame.Parent = MainFrame
-ScrollFrame.Size = UDim2.new(1, -12, 0, 260)
-ScrollFrame.Position = UDim2.new(0, 6, 0, 48)
+ScrollFrame.Size = UDim2.new(1, -12, 1, -12)
+ScrollFrame.Position = UDim2.new(0, 6, 0, 6)
 ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.Visible = false
-ScrollFrame.ScrollBarThickness = 2
-ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(240, 45, 45)
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.ScrollBarThickness = 3
+ScrollFrame.ScrollBarImageColor3 = NeonPurpleGlow
 ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScrollFrame.Parent = DropdownFrame
 
 local ListLayout = Instance.new("UIListLayout", ScrollFrame)
 ListLayout.Padding = UDim.new(0, 5)
 ListLayout.SortOrder = Enum.SortOrder.Name
-
--- Drag and Drop Functionality
-local Dragging, DragInput, DragStart, StartPos
-MenuHeaderBtn.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		Dragging = true
-		DragStart = input.Position
-		StartPos = MainFrame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then Dragging = false end
-		end)
-	end
-end)
-
-MenuHeaderBtn.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		DragInput = input
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if input == DragInput and Dragging then
-		local Delta = input.Position - DragStart
-		MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-	end
-end)
 
 -- =========================================================================
 -- 👥 STATE-RETENTION COMPILER
@@ -151,10 +256,11 @@ end)
 
 local function CreateUserRow(player)
 	local RowBtn = Instance.new("TextButton")
-	RowBtn.Size = UDim2.new(1, -4, 0, 32)
-	RowBtn.Text = "  " .. player.Name
+	RowBtn.Size = UDim2.new(1, -2, 0, 28)
+	RowBtn.Text = "  " .. player.DisplayName
 	RowBtn.Font = Enum.Font.GothamMedium
-	RowBtn.TextSize = 12
+	RowBtn.TextSize = 11
+	RowBtn.TextColor3 = PassiveTextColor
 	RowBtn.TextXAlignment = Enum.TextXAlignment.Left
 	RowBtn.AutoButtonColor = false
 
@@ -163,146 +269,151 @@ local function CreateUserRow(player)
 
 	local RowStroke = Instance.new("UIStroke", RowBtn)
 	RowStroke.Thickness = 1
+	RowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 	local Indicator = Instance.new("Frame", RowBtn)
-	Indicator.Size = UDim2.fromOffset(4, 14)
-	Indicator.Position = UDim2.new(1, -12, 0.5, -7)
+	Indicator.Size = UDim2.fromOffset(4, 12)
+	Indicator.Position = UDim2.new(1, -12, 0.5, -6)
 	Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
 
-	-- Check structural persistence lookup maps to preserve dynamic UI selection states
 	if getgenv().configs.TargetMap[player.Name] then
-		RowBtn.BackgroundColor3 = Color3.fromRGB(38, 14, 14)
-		RowBtn.TextColor3 = Color3.fromRGB(255, 200, 200)
-		RowStroke.Color = Color3.fromRGB(240, 45, 45)
-		RowStroke.Transparency = 0.3
-		Indicator.BackgroundColor3 = Color3.fromRGB(255, 45, 45)
+		RowBtn.BackgroundColor3 = Color3.fromRGB(32, 16, 48)
+		RowBtn.BackgroundTransparency = 0.15
+		RowBtn.TextColor3 = TargetRed
+		RowStroke.Color = NeonPurpleGlow
+		Indicator.BackgroundColor3 = TargetRed
 	else
-		RowBtn.BackgroundColor3 = Color3.fromRGB(18, 10, 10)
-		RowBtn.TextColor3 = Color3.fromRGB(200, 180, 180)
-		RowStroke.Color = Color3.fromRGB(240, 45, 45)
-		RowStroke.Transparency = 0.7
-		Indicator.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
-	end
-
-	-- Interaction Logic mapping dynamically back into the original TargetList array structure
-	RowBtn.MouseButton1Click:Connect(function()
-		local list = getgenv().configs.TargetList
-		local idx = table.find(list, player)
-
-		if idx then
-			table.remove(list, idx)
-			getgenv().configs.TargetMap[player.Name] = nil
-			TweenService:Create(RowBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(18, 10, 10)}):Play()
-			TweenService:Create(RowStroke, TweenInfo.new(0.15), {Transparency = 0.7}):Play()
-			TweenService:Create(Indicator, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 20, 20)}):Play()
-		else
-			table.insert(list, player)
-			getgenv().configs.TargetMap[player.Name] = player
-			TweenService:Create(RowBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(38, 14, 14)}):Play()
-			TweenService:Create(RowStroke, TweenInfo.new(0.15), {Transparency = 0.3}):Play()
-			TweenService:Create(Indicator, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 45, 45)}):Play()
-		end
-	end)
-
-	return RowBtn
+		RowBtn.BackgroundColor3 = ContentCardBg
+		RowBtn.BackgroundTransparency = 0.15
+		RowBtn.TextColor3 = PassiveTextColor
+		RowStroke.Color = Color3.fromRGB(45, 52, 72)
+Indicator.BackgroundColor3 = Color3.fromRGB(45, 52, 72)
 end
-
-local function RerenderPlayerPool()
-	for _, child in ipairs(ScrollFrame:GetChildren()) do
-		if child:IsA("TextButton") then child:Destroy() end
-	end
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= lp then
-			CreateUserRow(player).Parent = ScrollFrame
-		end
-	end
+RowBtn.MouseEnter:Connect(function()
+if not getgenv().configs.TargetMap[player.Name] then
+TweenService:Create(RowBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(24, 28, 40)}):Play()
+TweenService:Create(RowStroke, TweenInfo.new(0.1), {Color = NeonCyanAccent}):Play()
 end
-
--- UI Toggle Configuration
-MenuHeaderBtn.MouseButton1Click:Connect(function()
-	local isOpen = ScrollFrame.Visible
-	if not isOpen then
-		RerenderPlayerPool()
-		ScrollFrame.Visible = true
-		TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.fromOffset(220, 318)}):Play()
-	else
-		TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.fromOffset(220, 42)}):Play()
-		task.delay(0.2, function() ScrollFrame.Visible = false end)
-	end
 end)
-
+RowBtn.MouseLeave:Connect(function()
+if not getgenv().configs.TargetMap[player.Name] then
+TweenService:Create(RowBtn, TweenInfo.new(0.1), {BackgroundColor3 = ContentCardBg}):Play()
+TweenService:Create(RowStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(45, 52, 72)}):Play()
+end
+end)
+RowBtn.MouseButton1Click:Connect(function()
+local list = getgenv().configs.TargetList
+local idx = table.find(list, player)
+if idx then
+table.remove(list, idx)
+getgenv().configs.TargetMap[player.Name] = nil
+TweenService:Create(RowBtn, TweenInfo.new(0.15), {BackgroundColor3 = ContentCardBg}):Play()
+RowStroke.Color = Color3.fromRGB(45, 52, 72)
+RowBtn.TextColor3 = PassiveTextColor
+TweenService:Create(Indicator, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(45, 52, 72)}):Play()
+else
+table.insert(list, player)
+getgenv().configs.TargetMap[player.Name] = player
+TweenService:Create(RowBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(32, 16, 48)}):Play()
+RowStroke.Color = NeonPurpleGlow
+RowBtn.TextColor3 = TargetRed
+TweenService:Create(Indicator, TweenInfo.new(0.15), {BackgroundColor3 = TargetRed}):Play()
+end
+end)
+return RowBtn
+end
+function RerenderPlayerPool()
+for _, child in ipairs(ScrollFrame:GetChildren()) do
+if child:IsA("TextButton") then child:Destroy() end
+end
+for _, player in ipairs(Players:GetPlayers()) do
+if player ~= lp then
+CreateUserRow(player).Parent = ScrollFrame
+end
+end
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 4)
+end
+local menuOpen = false
+local function toggleDropdown()
+menuOpen = not menuOpen
+if menuOpen then
+RerenderPlayerPool()
+DropdownFrame.Visible = true
+DropdownFrame.Size = UDim2.new(1, 0, 0, 0)
+local buttonCount = #ScrollFrame:GetChildren() - 1
+local calculatedHeight = math.clamp(buttonCount * 33 + 12, 45, 150)
+DropdownArrowBtn.Text = "▲"
+TweenService:Create(DropdownFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, calculatedHeight)}):Play()
+else
+DropdownArrowBtn.Text = "▼"
+local tween = TweenService:Create(DropdownFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = UDim2.new(1, 0, 0, 0)})
+tween:Play()
+tween.Completed:Connect(function()
+if not menuOpen then DropdownFrame.Visible = false end
+end)
+end
+end
+DropdownArrowBtn.MouseButton1Click:Connect(toggleDropdown)
+MenuHeaderBtn.MouseButton1Click:Connect(toggleDropdown)
 Players.PlayerAdded:Connect(RerenderPlayerPool)
 Players.PlayerRemoving:Connect(function(player)
-	local idx = table.find(getgenv().configs.TargetList, player)
-	if idx then table.remove(getgenv().configs.TargetList, idx) end
-	getgenv().configs.TargetMap[player.Name] = nil
-	RerenderPlayerPool()
+local idx = table.find(getgenv().configs.TargetList, player)
+if idx then table.remove(getgenv().configs.TargetList, idx) end
+getgenv().configs.TargetMap[player.Name] = nil
+RerenderPlayerPool()
 end)
-
 -- =========================================================================
 -- ⚡ TARGET AURA CORE (ORIGINAL LOOP LOGIC EXPORT)
 -- =========================================================================
-
 local lastFire = 0
-local FIRE_RATE = 1/35 -- stable sweet spot
-
+local FIRE_RATE = 1/35
 local function getTargets()
-	local t = {}
-	for _, plr in ipairs(getgenv().configs.TargetList) do
-		local char = plr.Character
-		if char and char:FindFirstChild("HumanoidRootPart") then
-			local hum = char:FindFirstChild("Humanoid")
-			if hum and hum.Health > 0 then
-				table.insert(t, char)
-			end
-		end
-	end
-	return t
+local t = {}
+for _, plr in ipairs(getgenv().configs.TargetList) do
+local char = plr.Character
+if char and char:FindFirstChild("HumanoidRootPart") then
+local hum = char:FindFirstChild("Humanoid")
+if hum and hum.Health > 0 then
+table.insert(t, char)
 end
-
+end
+end
+return t
+end
 local PRIORITY_PARTS = {
-	"HumanoidRootPart",
-	"Head",
-	"UpperTorso",
-	"LowerTorso"
+"HumanoidRootPart",
+"Head",
+"UpperTorso",
+"LowerTorso"
 }
-
 local function hitTarget(tool, touch, char)
-	for i = 1, #PRIORITY_PARTS do
-		local part = char:FindFirstChild(PRIORITY_PARTS[i])
-		if part and part:IsA("BasePart") then
-			firetouchinterest(touch, part, 0)
-			firetouchinterest(touch, part, 1)
-		end
-	end
+for i = 1, #PRIORITY_PARTS do
+local part = char:FindFirstChild(PRIORITY_PARTS[i])
+if part and part:IsA("BasePart") then
+firetouchinterest(touch, part, 0)
+firetouchinterest(touch, part, 1)
 end
-
+end
+end
 table.insert(getgenv().configs.connections, RunService.PreSimulation:Connect(function()
-	if not Run then return end
-	if #getgenv().configs.TargetList == 0 then return end
-
-	local now = os.clock()
-	if now - lastFire < FIRE_RATE then return end
-	lastFire = now
-
-	local char = getchar()
-	if not char then return end
-
-	local targets = getTargets()
-	if #targets == 0 then return end
-
-	-- Original yield behavior
-	RunService.PostSimulation:Wait()
-
-	for _, tool in ipairs(char:GetChildren()) do
-		if tool:IsA("Tool") then
-			local touch = GetTouchInterest(tool)
-			if not touch then continue end
-
-			for _, targetChar in ipairs(targets) do hitTarget(tool, touch, targetChar)
+if not Run then return end
+if #getgenv().configs.TargetList == 0 then return end
+local now = os.clock()
+if now - lastFire < FIRE_RATE then return end
+lastFire = now
+local char = getchar()
+if not char then return end
+local targets = getTargets()
+if #targets == 0 then return end
+RunService.PostSimulation:Wait()
+for _, tool in ipairs(char:GetChildren()) do
+if tool:IsA("Tool") then
+local touch = GetTouchInterest(tool)
+if not touch then continue end
+for _, targetChar in ipairs(targets) do
+hitTarget(tool, touch, targetChar)
 end
 end
 end
 end))
-
-
+print("Target Aura repositioned directly over the inventory tool container.")
