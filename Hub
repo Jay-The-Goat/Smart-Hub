@@ -1,10 +1,18 @@
---hi
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
+-- ============================================================
+--  Smart Hub + Neon Hub UI (FULL MERGED VERSION)
+--  Keeps ALL your logic, ONLY changes design to Neon Hub
+-- ============================================================
+
+local Players      = game:GetService("Players")
+local RunService   = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Allowed users list
+-- ============================================================
+--  Allowed users (UNCHANGED)
+-- ============================================================
 local testUsers = {
     "Adl_Jacob", "Ns_NED", "Test9", "idonotlikelife0",
     "TheyFw_maaa", "Thegoat_legued", "Test13", "Test14", "Test15",
@@ -34,347 +42,540 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-local run_secure = pcall or function(f) return true, f() end
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-
--- =============================================================================
---  ORIGINAL ACTIONS (unchanged except Tab2 first five entries)
--- =============================================================================
-local customActions = {
-	Tab1 = {
-		[1]  = { name = "Get Tools",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20tools"))() end },
-		[2]  = { name = "Loop Bring",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/loopbring"))() end },
-		[3]  = { name = "use tools",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/use%20tools"))() end },
-		[4]  = { name = "Respawn",       run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/respawn"))() end },
-		[5]  = { name = "No Cooldown",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/No%20cooldown"))() end },
-		[6]  = { name = "Kill Counter",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Kill%20Counter"))() end },
-		[7]  = { name = "Kill Aura",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Kill%20aura"))() end },
-		[8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
-		[9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
-		[10] = { name = "Button 10", run = function() loadstring(game:HttpGet(""))() end },
-		[11] = { name = "Button 11", run = function() loadstring(game:HttpGet(""))() end },
-		[12] = { name = "Button 12", run = function() loadstring(game:HttpGet(""))() end },
-		[13] = { name = "Button 13", run = function() loadstring(game:HttpGet(""))() end },
-		[14] = { name = "Button 14", run = function() loadstring(game:HttpGet(""))() end },
-		[15] = { name = "Button 15", run = function() loadstring(game:HttpGet(""))() end },
-		[16] = { name = "Button 16", run = function() loadstring(game:HttpGet(""))() end },
-		[17] = { name = "Button 17", run = function() loadstring(game:HttpGet(""))() end },
-		[18] = { name = "Button 18", run = function() loadstring(game:HttpGet(""))() end },
-		[19] = { name = "Button 19", run = function() loadstring(game:HttpGet(""))() end },
-		[20] = { name = "Button 20", run = function() loadstring(game:HttpGet(""))() end },
-		[21] = { name = "Button 21", run = function() loadstring(game:HttpGet(""))() end },
-		[22] = { name = "Button 22", run = function() loadstring(game:HttpGet(""))() end },
-		[23] = { name = "Button 23", run = function() loadstring(game:HttpGet(""))() end },
-		[24] = { name = "Button 24", run = function() loadstring(game:HttpGet(""))() end },
-		[25] = { name = "Button 25", run = function() loadstring(game:HttpGet(""))() end },
-		[26] = { name = "Button 26", run = function() loadstring(game:HttpGet(""))() end },
-		[27] = { name = "Button 27", run = function() loadstring(game:HttpGet(""))() end },
-		[28] = { name = "Button 28", run = function() loadstring(game:HttpGet(""))() end },
-		[29] = { name = "Button 29", run = function() loadstring(game:HttpGet(""))() end },
-		[30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
-	},
-	Tab2 = {
-		[1]  = { name = "Antilag",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/antilag"))() end },
-		[2]  = { name = "Damage",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/damage"))() end },
-		[3]  = { name = "Reach",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/reach"))() end },
-		[4]  = { name = "Get base", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
-		[5]  = { name = "6x damage",run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/6x%20damage"))() end },
-		[6]  = { name = "Tools Orbit",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Tools%20Orbit"))() end },
-		[7]  = { name = "Button 7",  run = function() loadstring(game:HttpGet(""))() end },
-		[8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
-		[9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
-		[10] = { name = "Button 10", run = function() loadstring(game:HttpGet(""))() end },
-		[11] = { name = "Button 11", run = function() loadstring(game:HttpGet(""))() end },
-		[12] = { name = "Button 12", run = function() loadstring(game:HttpGet(""))() end },
-		[13] = { name = "Button 13", run = function() loadstring(game:HttpGet(""))() end },
-		[14] = { name = "Button 14", run = function() loadstring(game:HttpGet(""))() end },
-		[15] = { name = "Button 15", run = function() loadstring(game:HttpGet(""))() end },
-		[16] = { name = "Button 16", run = function() loadstring(game:HttpGet(""))() end },
-		[17] = { name = "Button 17", run = function() loadstring(game:HttpGet(""))() end },
-		[18] = { name = "Button 18", run = function() loadstring(game:HttpGet(""))() end },
-		[19] = { name = "Button 19", run = function() loadstring(game:HttpGet(""))() end },
-		[20] = { name = "Button 20", run = function() loadstring(game:HttpGet(""))() end },
-		[21] = { name = "Button 21", run = function() loadstring(game:HttpGet(""))() end },
-		[22] = { name = "Button 22", run = function() loadstring(game:HttpGet(""))() end },
-		[23] = { name = "Button 23", run = function() loadstring(game:HttpGet(""))() end },
-		[24] = { name = "Button 24", run = function() loadstring(game:HttpGet(""))() end },
-		[25] = { name = "Button 25", run = function() loadstring(game:HttpGet(""))() end },
-		[26] = { name = "Button 26", run = function() loadstring(game:HttpGet(""))() end },
-		[27] = { name = "Button 27", run = function() loadstring(game:HttpGet(""))() end },
-		[28] = { name = "Button 28", run = function() loadstring(game:HttpGet(""))() end },
-		[29] = { name = "Button 29", run = function() loadstring(game:HttpGet(""))() end },
-		[30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
-	},
-	Tab3 = {
-		[1]  = { name = "Noco Boaster 1", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/noco%20boaster%201"))() end },
-		[2]  = { name = "Noco Boaster 2", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Noco%20boaster%202"))() end },
-		[3]  = { name = "Noco Boaster 3", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/noco%20boaster%203"))() end },
-		[4]  = { name = "Noco Boaster 4", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/noco%20boaster%204"))() end },
-		[5]  = { name = "Button 5",  run = function() loadstring(game:HttpGet(""))() end },
-		[6]  = { name = "Button 6",  run = function() loadstring(game:HttpGet(""))() end },
-		[7]  = { name = "Button 7",  run = function() loadstring(game:HttpGet(""))() end },
-		[8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
-		[9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
-		[10] = { name = "Button 10", run = function() loadstring(game:HttpGet(""))() end },
-		[11] = { name = "Button 11", run = function() loadstring(game:HttpGet(""))() end },
-		[12] = { name = "Button 12", run = function() loadstring(game:HttpGet(""))() end },
-		[13] = { name = "Button 13", run = function() loadstring(game:HttpGet(""))() end },
-		[14] = { name = "Button 14", run = function() loadstring(game:HttpGet(""))() end },
-		[15] = { name = "Button 15", run = function() loadstring(game:HttpGet(""))() end },
-		[16] = { name = "Button 16", run = function() loadstring(game:HttpGet(""))() end },
-		[17] = { name = "Button 17", run = function() loadstring(game:HttpGet(""))() end },
-		[18] = { name = "Button 18", run = function() loadstring(game:HttpGet(""))() end },
-		[19] = { name = "Button 19", run = function() loadstring(game:HttpGet(""))() end },
-		[20] = { name = "Button 20", run = function() loadstring(game:HttpGet(""))() end },
-		[21] = { name = "Button 21", run = function() loadstring(game:HttpGet(""))() end },
-		[22] = { name = "Button 22", run = function() loadstring(game:HttpGet(""))() end },
-		[23] = { name = "Button 23", run = function() loadstring(game:HttpGet(""))() end },
-		[24] = { name = "Button 24", run = function() loadstring(game:HttpGet(""))() end },
-		[25] = { name = "Button 25", run = function() loadstring(game:HttpGet(""))() end },
-		[26] = { name = "Button 26", run = function() loadstring(game:HttpGet(""))() end },
-		[27] = { name = "Button 27", run = function() loadstring(game:HttpGet(""))() end },
-		[28] = { name = "Button 28", run = function() loadstring(game:HttpGet(""))() end },
-		[29] = { name = "Button 29", run = function() loadstring(game:HttpGet(""))() end },
-		[30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
-	}
-}
-
--- ==========================================
--- UI (clean design)
--- ==========================================
-
--- Toggle Button
-local mainToggle = Instance.new("ScreenGui")
-mainToggle.Name = "TestingGui_Toggle"
-mainToggle.ResetOnSpawn = false
-mainToggle.DisplayOrder = 10
-mainToggle.Parent = playerGui
-
-local openBtn = Instance.new("TextButton")
-openBtn.Size = UDim2.new(0, 120, 0, 40)
-openBtn.Position = UDim2.new(0, 10, 0, 10)
-openBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-openBtn.BackgroundTransparency = 0.1
-openBtn.Text = "TESTING"
-openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-openBtn.Font = Enum.Font.GothamBold
-openBtn.TextSize = 14
-openBtn.ClipsDescendants = true
-openBtn.Parent = mainToggle
-Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0, 8)
-
-local stroke = Instance.new("UIStroke", openBtn)
-stroke.Color = Color3.fromRGB(200, 20, 20)
-stroke.Thickness = 1.5
-
--- Main Panel
-local mainPanelGui = Instance.new("ScreenGui")
-mainPanelGui.Name = "MasterPanel_Gui"
-mainPanelGui.ResetOnSpawn = false
-mainPanelGui.DisplayOrder = 5
-mainPanelGui.Parent = playerGui
-
-local panel = Instance.new("Frame")
-panel.Size = UDim2.new(0, 400, 0, 340)
-panel.Position = UDim2.new(0.3, 0, 0.2, 0)
-panel.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
-panel.Visible = false
-panel.Parent = mainPanelGui
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
-
-local panelStroke = Instance.new("UIStroke", panel)
-panelStroke.Color = Color3.fromRGB(160, 10, 10)
-panelStroke.Thickness = 1.2
-
--- =============================================================================
--- HEALTH GUI (clean, real-time)
--- =============================================================================
-local localPlayer = player
-
-pcall(function()
-	local parentFrame = panel
-	if parentFrame:FindFirstChild("HealthContainer") then
-		parentFrame.HealthContainer:Destroy()
-	end
-
-	local HealthContainer = Instance.new("Frame")
-	HealthContainer.Name = "HealthContainer"
-	HealthContainer.Size = UDim2.new(1, 0, 0, 80)
-	HealthContainer.Position = UDim2.new(0, 0, 0, 0)
-	HealthContainer.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
-	HealthContainer.BorderSizePixel = 0
-	HealthContainer.Parent = parentFrame
-	Instance.new("UICorner", HealthContainer).CornerRadius = UDim.new(0, 10)
-
-	local AvatarImage = Instance.new("ImageLabel")
-	AvatarImage.Name = "AvatarImage"
-	AvatarImage.Size = UDim2.new(0, 50, 0, 50)
-	AvatarImage.Position = UDim2.new(0, 10, 0.5, -25)
-	AvatarImage.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-	AvatarImage.BorderSizePixel = 0
-	AvatarImage.Parent = HealthContainer
-	Instance.new("UICorner", AvatarImage).CornerRadius = UDim.new(1, 0)  -- circular
-
-	local HealthLabel = Instance.new("TextLabel")
-	HealthLabel.Name = "HealthLabel"
-	HealthLabel.Size = UDim2.new(1, -70, 0, 20)
-	HealthLabel.Position = UDim2.new(0, 70, 0, 10)
-	HealthLabel.BackgroundTransparency = 1
-	HealthLabel.Font = Enum.Font.GothamBold
-	HealthLabel.TextSize = 13
-	HealthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	HealthLabel.TextXAlignment = Enum.TextXAlignment.Left
-	HealthLabel.Parent = HealthContainer
-
-	local GreenBarTrack = Instance.new("Frame")
-	GreenBarTrack.Name = "GreenBarTrack"
-	GreenBarTrack.Size = UDim2.new(1, -70, 0, 14)
-	GreenBarTrack.Position = UDim2.new(0, 70, 0, 34)
-	GreenBarTrack.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-	GreenBarTrack.BorderSizePixel = 0
-	GreenBarTrack.Parent = HealthContainer
-	Instance.new("UICorner", GreenBarTrack).CornerRadius = UDim.new(0, 7)
-
-	local GreenBar = Instance.new("Frame")
-	GreenBar.Name = "GreenBar"
-	GreenBar.Size = UDim2.new(1, 0, 1, 0)
-	GreenBar.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
-	GreenBar.BorderSizePixel = 0
-	GreenBar.Parent = GreenBarTrack
-	Instance.new("UICorner", GreenBar).CornerRadius = UDim.new(0, 7)
-
-	local NameLabel = Instance.new("TextLabel")
-	NameLabel.Name = "NameLabel"
-	NameLabel.Size = UDim2.new(1, -70, 0, 18)
-	NameLabel.Position = UDim2.new(0, 70, 0, 52)
-	NameLabel.BackgroundTransparency = 1
-	NameLabel.Font = Enum.Font.SourceSans
-	NameLabel.TextSize = 11
-	NameLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-	NameLabel.TextXAlignment = Enum.TextXAlignment.Left
-	NameLabel.Text = localPlayer.DisplayName .. " (@" .. localPlayer.Name .. ")"
-	NameLabel.Parent = HealthContainer
-
-	local function updateNameLabel()
-		NameLabel.Text = localPlayer.DisplayName .. " (@" .. localPlayer.Name .. ")"
-	end
-	localPlayer:GetPropertyChangedSignal("DisplayName"):Connect(updateNameLabel)
-	localPlayer:GetPropertyChangedSignal("Name"):Connect(updateNameLabel)
-
-	local function setAvatarHeadshot()
-		task.spawn(function()
-			local userId = localPlayer.UserId
-			local thumbType = Enum.ThumbnailType.HeadShot
-			local thumbSize = Enum.ThumbnailSize.Size150x150
-			local success, content = pcall(function()
-				return Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
-			end)
-			if success and content then
-				AvatarImage.Image = content
-			end
-		end)
-	end
-
-	local function applyUIHealthUpdate(humanoid)
-		if not humanoid then return end
-		local maxHealth = humanoid.MaxHealth
-		if maxHealth <= 0 then return end
-		local currentHealth = math.clamp(humanoid.Health, 0, maxHealth)
-		HealthLabel.Text = string.format("HEALTH      %d / %d", math.floor(currentHealth), math.floor(maxHealth))
-		local healthRatio = currentHealth / maxHealth
-		GreenBar:TweenSize(UDim2.new(healthRatio, 0, 1, 0), "Out", "Quad", 0.2, true)
-	end
-
-	local function connectHumanoidMetrics(character)
-		if not character then return end
-		local humanoid = character:WaitForChild("Humanoid", 10)
-		if humanoid then
-			humanoid.HealthChanged:Connect(function()
-				applyUIHealthUpdate(humanoid)
-			end)
-			humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
-				applyUIHealthUpdate(humanoid)
-			end)
-			applyUIHealthUpdate(humanoid)
-		end
-	end
-
-	setAvatarHeadshot()
-	if localPlayer.Character then
-		connectHumanoidMetrics(localPlayer.Character)
-	end
-	localPlayer.CharacterAdded:Connect(connectHumanoidMetrics)
-end)
--- =============================================================================
-
--- Tab Bar
-local tabBar = Instance.new("Frame")
-tabBar.Size = UDim2.new(1, 0, 0, 36)
-tabBar.Position = UDim2.new(0, 0, 0, 80)
-tabBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-tabBar.Parent = panel
-Instance.new("UICorner", tabBar).CornerRadius = UDim.new(0, 10)
-
-local activePages = {}
-local tabButtons = {}
-for i = 1, 3 do
-	local pageId = "Tab" .. i
-	local page = Instance.new("ScrollingFrame")
-	page.Name = pageId .. "_Page"
-	page.Size = UDim2.new(1, 0, 1, -116)
-	page.Position = UDim2.new(0, 0, 0, 116)
-	page.BackgroundColor3 = Color3.fromRGB(28, 28, 30)
-	page.CanvasSize = UDim2.new(0, 0, 4, 0)
-	page.ScrollBarThickness = 4
-	page.BorderSizePixel = 0
-	page.Visible = (i == 1)
-	page.Parent = panel
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.new(0, 120, 0, 35)
-	grid.CellPadding = UDim2.new(0, 10, 0, 10)
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = page
-	activePages[i] = page
-
-	for btnIndex = 1, 30 do
-		local btn = Instance.new("TextButton")
-		btn.Font = Enum.Font.SourceSansBold
-		btn.TextSize = 13
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn.BackgroundColor3 = Color3.fromRGB(40, 40, 42)
-		btn.Parent = page
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-		local itemConfig = customActions[pageId][btnIndex]
-		btn.Name = "Action_" .. (itemConfig.name or btnIndex)
-		btn.Text = itemConfig.name or ("Item " .. btnIndex)
-		btn.MouseButton1Click:Connect(function()
-			run_secure(itemConfig.run)
-		end)
-	end
-
-	local navBtn = Instance.new("TextButton")
-	navBtn.Size = UDim2.new(1/3, 0, 1, 0)
-	navBtn.Position = UDim2.new((i - 1) * (1/3), 0, 0, 0)
-	navBtn.Text = "TAB " .. i
-	navBtn.Font = Enum.Font.GothamBold
-	navBtn.TextSize = 13
-	navBtn.BackgroundColor3 = (i == 1) and Color3.fromRGB(160, 10, 10) or Color3.fromRGB(35, 35, 38)
-	navBtn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 200, 200)
-	navBtn.Parent = tabBar
-	Instance.new("UICorner", navBtn).CornerRadius = UDim.new(0, 8)
-	tabButtons[i] = navBtn
-
-	navBtn.MouseButton1Click:Connect(function()
-		for p = 1, 3 do
-			activePages[p].Visible = (p == i)
-			tabButtons[p].BackgroundColor3 = (p == i) and Color3.fromRGB(160, 10, 10) or Color3.fromRGB(35, 35, 38)
-			tabButtons[p].TextColor3 = (p == i) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 200, 200)
-		end
-	end)
+local function run_secure(fn)
+    local ok, err = pcall(fn)
+    if not ok then
+        warn("[SmartHub] Error running action:", err)
+    end
 end
 
--- Toggle logic
-openBtn.MouseButton1Click:Connect(function()
-	panel.Visible = not panel.Visible
+-- ============================================================
+--  ORIGINAL ACTIONS (UNCHANGED)
+-- ============================================================
+local customActions = {
+    Tab1 = {
+        [1]  = { name = "Get Tools",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20tools"))() end },
+        [2]  = { name = "Loop Bring",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/loopbring"))() end },
+        [3]  = { name = "use tools",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/use%20tools"))() end },
+        [4]  = { name = "Respawn",       run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/respawn"))() end },
+        [5]  = { name = "No Cooldown",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/No%20cooldown"))() end },
+        [6]  = { name = "Kill Counter",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Kill%20Counter"))() end },
+        [7]  = { name = "Kill Aura",     run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Kill%20aura"))() end },
+        [8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
+        [9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
+        [10] = { name = "Button 10", run = function() loadstring(game:HttpGet(""))() end },
+        [11] = { name = "Button 11", run = function() loadstring(game:HttpGet(""))() end },
+        [12] = { name = "Button 12", run = function() loadstring(game:HttpGet(""))() end },
+        [13] = { name = "Button 13", run = function() loadstring(game:HttpGet(""))() end },
+        [14] = { name = "Button 14", run = function() loadstring(game:HttpGet(""))() end },
+        [15] = { name = "Button 15", run = function() loadstring(game:HttpGet(""))() end },
+        [16] = { name = "Button 16", run = function() loadstring(game:HttpGet(""))() end },
+        [17] = { name = "Button 17", run = function() loadstring(game:HttpGet(""))() end },
+        [18] = { name = "Button 18", run = function() loadstring(game:HttpGet(""))() end },
+        [19] = { name = "Button 19", run = function() loadstring(game:HttpGet(""))() end },
+        [20] = { name = "Button 20", run = function() loadstring(game:HttpGet(""))() end },
+        [21] = { name = "Button 21", run = function() loadstring(game:HttpGet(""))() end },
+        [22] = { name = "Button 22", run = function() loadstring(game:HttpGet(""))() end },
+        [23] = { name = "Button 23", run = function() loadstring(game:HttpGet(""))() end },
+        [24] = { name = "Button 24", run = function() loadstring(game:HttpGet(""))() end },
+        [25] = { name = "Button 25", run = function() loadstring(game:HttpGet(""))() end },
+        [26] = { name = "Button 26", run = function() loadstring(game:HttpGet(""))() end },
+        [27] = { name = "Button 27", run = function() loadstring(game:HttpGet(""))() end },
+        [28] = { name = "Button 28", run = function() loadstring(game:HttpGet(""))() end },
+        [29] = { name = "Button 29", run = function() loadstring(game:HttpGet(""))() end },
+        [30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
+    },
+    Tab2 = {
+        [1]  = { name = "Antilag",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/antilag"))() end },
+        [2]  = { name = "Damage",   run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/damage"))() end },
+        [3]  = { name = "Reach",    run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/reach"))() end },
+        [4]  = { name = "Get base", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/get%20base"))() end },
+        [5]  = { name = "6x damage",run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/6x%20damage"))() end },
+        [6]  = { name = "Tools Orbit",  run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Tools%20Orbit"))() end },
+        [7]  = { name = "Button 7",  run = function() loadstring(game:HttpGet(""))() end },
+        [8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
+        [9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
+        [10] = { name = "Button 10", run = function() loadstring(game:HttpGet(""))() end },
+        [11] = { name = "Button 11", run = function() loadstring(game:HttpGet(""))() end },
+        [12] = { name = "Button 12", run = function() loadstring(game:HttpGet(""))() end },
+        [13] = { name = "Button 13", run = function() loadstring(game:HttpGet(""))() end },
+        [14] = { name = "Button 14", run = function() loadstring(game:HttpGet(""))() end },
+        [15] = { name = "Button 15", run = function() loadstring(game:HttpGet(""))() end },
+        [16] = { name = "Button 16", run = function() loadstring(game:HttpGet(""))() end },
+        [17] = { name = "Button 17", run = function() loadstring(game:HttpGet(""))() end },
+        [18] = { name = "Button 18", run = function() loadstring(game:HttpGet(""))() end },
+        [19] = { name = "Button 19", run = function() loadstring(game:HttpGet(""))() end },
+        [20] = { name = "Button 20", run = function() loadstring(game:HttpGet(""))() end },
+        [21] = { name = "Button 21", run = function() loadstring(game:HttpGet(""))() end },
+        [22] = { name = "Button 22", run = function() loadstring(game:HttpGet(""))() end },
+        [23] = { name = "Button 23", run = function() loadstring(game:HttpGet(""))() end },
+        [24] = { name = "Button 24", run = function() loadstring(game:HttpGet(""))() end },
+        [25] = { name = "Button 25", run = function() loadstring(game:HttpGet(""))() end },
+        [26] = { name = "Button 26", run = function() loadstring(game:HttpGet(""))() end },
+        [27] = { name = "Button 27", run = function() loadstring(game:HttpGet(""))() end },
+        [28] = { name = "Button 28", run = function() loadstring(game:HttpGet(""))() end },
+        [29] = { name = "Button 29", run = function() loadstring(game:HttpGet(""))() end },
+        [30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
+    },
+    Tab3 = {
+        [1]  = { name = "Noco Boaster 1", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/main/noco%20boaster%201"))() end },
+        [2]  = { name = "Noco Boaster 2", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/Noco%20boaster%202"))() end },
+        [3]  = { name = "Noco Boaster 3", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/noco%20boaster%203"))() end },
+        [4]  = { name = "Noco Boaster 4", run = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Jay-The-Goat/Smart-Hub/refs/heads/main/noco%20boaster%204"))() end },
+        [5]  = { name = "Button 5",  run = function() loadstring(game:HttpGet(""))() end },
+        [6]  = { name = "Button 6",  run = function() loadstring(game:HttpGet(""))() end },
+        [7]  = { name = "Button 7",  run = function() loadstring(game:HttpGet(""))() end },
+        [8]  = { name = "Button 8",  run = function() loadstring(game:HttpGet(""))() end },
+        [9]  = { name = "Button 9",  run = function() loadstring(game:HttpGet(""))() end },
+        [10] = { name = "Button 10", run = function() loadstring(game:HttpGet(""))() end },
+        [11] = { name = "Button 11", run = function() loadstring(game:HttpGet(""))() end },
+        [12] = { name = "Button 12", run = function() loadstring(game:HttpGet(""))() end },
+        [13] = { name = "Button 13", run = function() loadstring(game:HttpGet(""))() end },
+        [14] = { name = "Button 14", run = function() loadstring(game:HttpGet(""))() end },
+        [15] = { name = "Button 15", run = function() loadstring(game:HttpGet(""))() end },
+        [16] = { name = "Button 16", run = function() loadstring(game:HttpGet(""))() end },
+        [17] = { name = "Button 17", run = function() loadstring(game:HttpGet(""))() end },
+        [18] = { name = "Button 18", run = function() loadstring(game:HttpGet(""))() end },
+        [19] = { name = "Button 19", run = function() loadstring(game:HttpGet(""))() end },
+        [20] = { name = "Button 20", run = function() loadstring(game:HttpGet(""))() end },
+        [21] = { name = "Button 21", run = function() loadstring(game:HttpGet(""))() end },
+        [22] = { name = "Button 22", run = function() loadstring(game:HttpGet(""))() end },
+        [23] = { name = "Button 23", run = function() loadstring(game:HttpGet(""))() end },
+        [24] = { name = "Button 24", run = function() loadstring(game:HttpGet(""))() end },
+        [25] = { name = "Button 25", run = function() loadstring(game:HttpGet(""))() end },
+        [26] = { name = "Button 26", run = function() loadstring(game:HttpGet(""))() end },
+        [27] = { name = "Button 27", run = function() loadstring(game:HttpGet(""))() end },
+        [28] = { name = "Button 28", run = function() loadstring(game:HttpGet(""))() end },
+        [29] = { name = "Button 29", run = function() loadstring(game:HttpGet(""))() end },
+        [30] = { name = "Button 30", run = function() loadstring(game:HttpGet(""))() end },
+    }
+}
+
+-- ============================================================
+--  Neon Hub UI — DESIGN ONLY
+-- ============================================================
+
+-- palette
+local NEON_CYAN   = Color3.fromRGB(0, 240, 255)
+local NEON_PURPLE = Color3.fromRGB(170, 0, 255)
+local PANEL_DARK  = Color3.fromRGB(12, 14, 22)
+local PANEL_DARK2 = Color3.fromRGB(9, 11, 16)
+local BTN_DARK    = Color3.fromRGB(15, 22, 32)
+local BTN_HOVER   = Color3.fromRGB(24, 36, 52)
+local TEXT_DIM    = Color3.fromRGB(140, 150, 175)
+
+-- sizing
+local PANEL_W, PANEL_H = 360, 300
+local TAB_COUNT        = 3
+local BTNS_PER_TAB     = 30
+local CELL_W, CELL_H   = 104, 34
+
+-- helpers
+local function corner(p, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r)
+    c.Parent = p
+    return c
+end
+
+local function stroke(p, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color
+    s.Thickness = thickness
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = p
+    return s
+end
+
+local function gradient(p, top, bottom, rot)
+    local g = Instance.new("UIGradient")
+    g.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, top),
+        ColorSequenceKeypoint.new(1, bottom),
+    })
+    g.Rotation = rot or 45
+    g.Parent = p
+    return g
+end
+
+local function flashStroke(frame)
+    local s = frame:FindFirstChildOfClass("UIStroke")
+    if not s then return end
+    local old = s.Color
+    s.Color = Color3.fromRGB(255, 255, 255)
+    task.delay(0.08, function()
+        if s.Parent then
+            s.Color = old
+        end
+    end)
+end
+
+-- ============================================================
+--  Toggle button (Neon)
+-- ============================================================
+local toggleGui = Instance.new("ScreenGui")
+toggleGui.Name = "NeonHub_Toggle"
+toggleGui.ResetOnSpawn = false
+toggleGui.DisplayOrder = 10
+toggleGui.Parent = playerGui
+
+local openBtn = Instance.new("TextButton")
+openBtn.Size = UDim2.new(0, 120, 0, 38)
+openBtn.Position = UDim2.new(0, 10, 0, 10)
+openBtn.BackgroundColor3 = BTN_DARK
+openBtn.Text = "◆ HUB"
+openBtn.TextColor3 = NEON_CYAN
+openBtn.Font = Enum.Font.GothamBold
+openBtn.TextSize = 14
+openBtn.AutoButtonColor = false
+openBtn.Parent = toggleGui
+corner(openBtn, 12)
+local toggleStroke = stroke(openBtn, NEON_CYAN, 2.5)
+
+openBtn.MouseEnter:Connect(function()
+    TweenService:Create(openBtn, TweenInfo.new(0.15), { BackgroundColor3 = BTN_HOVER }):Play()
+    TweenService:Create(toggleStroke, TweenInfo.new(0.15), { Color = NEON_PURPLE, Thickness = 3 }):Play()
 end)
+openBtn.MouseLeave:Connect(function()
+    TweenService:Create(openBtn, TweenInfo.new(0.15), { BackgroundColor3 = BTN_DARK }):Play()
+    TweenService:Create(toggleStroke, TweenInfo.new(0.15), { Color = NEON_CYAN, Thickness = 2.5 }):Play()
+end)
+
+-- ============================================================
+--  Main panel (Neon)
+-- ============================================================
+local panelGui = Instance.new("ScreenGui")
+panelGui.Name = "NeonHub_Panel"
+panelGui.ResetOnSpawn = false
+panelGui.DisplayOrder = 5
+panelGui.Parent = playerGui
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, PANEL_W, 0, PANEL_H)
+panel.Position = UDim2.new(0.3, 0, 0.2, 0)
+panel.BackgroundColor3 = PANEL_DARK
+panel.Visible = false
+panel.Parent = panelGui
+corner(panel, 14)
+stroke(panel, NEON_PURPLE, 3)
+gradient(panel, Color3.fromRGB(16, 12, 26), PANEL_DARK2, 45)
+
+local topGlow = Instance.new("Frame")
+topGlow.Size = UDim2.new(1, -24, 0, 2)
+topGlow.Position = UDim2.new(0, 12, 0, 6)
+topGlow.BackgroundColor3 = NEON_CYAN
+topGlow.BackgroundTransparency = 0.35
+topGlow.BorderSizePixel = 0
+topGlow.Parent = panel
+corner(topGlow, 2)
+
+-- ============================================================
+--  Health header (Neon)
+-- ============================================================
+local header = Instance.new("Frame")
+header.Name = "HealthHeader"
+header.Size = UDim2.new(1, -24, 0, 74)
+header.Position = UDim2.new(0, 12, 0, 14)
+header.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+header.BorderSizePixel = 0
+header.Parent = panel
+corner(header, 10)
+stroke(header, NEON_CYAN, 1.5)
+gradient(header, Color3.fromRGB(20, 16, 32), PANEL_DARK, 90)
+
+local avatar = Instance.new("ImageLabel")
+avatar.Size = UDim2.new(0, 50, 0, 50)
+avatar.Position = UDim2.new(0, 12, 0.5, -25)
+avatar.BackgroundColor3 = Color3.fromRGB(28, 34, 48)
+avatar.BorderSizePixel = 0
+avatar.Parent = header
+corner(avatar, 999)
+stroke(avatar, NEON_CYAN, 2)
+
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(1, -90, 0, 16)
+nameLabel.Position = UDim2.new(0, 74, 0, 8)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Font = Enum.Font.GothamMedium
+nameLabel.TextSize = 11
+nameLabel.TextColor3 = TEXT_DIM
+nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+nameLabel.Text = player.DisplayName .. " (@" .. player.Name .. ")"
+nameLabel.Parent = header
+
+local healthLabel = Instance.new("TextLabel")
+healthLabel.Size = UDim2.new(1, -90, 0, 16)
+healthLabel.Position = UDim2.new(0, 74, 0, 26)
+healthLabel.BackgroundTransparency = 1
+healthLabel.Font = Enum.Font.GothamBold
+healthLabel.TextSize = 12
+healthLabel.TextColor3 = NEON_CYAN
+healthLabel.TextXAlignment = Enum.TextXAlignment.Left
+healthLabel.Parent = header
+
+local healthTrack = Instance.new("Frame")
+healthTrack.Size = UDim2.new(1, -90, 0, 8)
+healthTrack.Position = UDim2.new(0, 74, 0, 46)
+healthTrack.BackgroundColor3 = Color3.fromRGB(36, 40, 52)
+healthTrack.BorderSizePixel = 0
+healthTrack.Parent = header
+corner(healthTrack, 4)
+
+local healthFill = Instance.new("Frame")
+healthFill.Size = UDim2.new(1, 0, 1, 0)
+healthFill.BackgroundColor3 = NEON_CYAN
+healthFill.BorderSizePixel = 0
+healthFill.Parent = healthTrack
+corner(healthFill, 4)
+gradient(healthFill, Color3.fromRGB(70, 235, 180), NEON_CYAN, 0)
+
+local pingLabel = Instance.new("TextLabel")
+pingLabel.Size = UDim2.new(0, 90, 0, 14)
+pingLabel.Position = UDim2.new(1, -96, 0, 10)
+pingLabel.BackgroundTransparency = 1
+pingLabel.Font = Enum.Font.Code
+pingLabel.TextSize = 11
+pingLabel.TextColor3 = NEON_CYAN
+pingLabel.TextXAlignment = Enum.TextXAlignment.Right
+pingLabel.Text = "PING: --ms"
+pingLabel.Parent = header
+
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(0, 90, 0, 14)
+fpsLabel.Position = UDim2.new(1, -96, 0, 26)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.Font = Enum.Font.Code
+fpsLabel.TextSize = 11
+fpsLabel.TextColor3 = NEON_PURPLE
+fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
+fpsLabel.Text = "FPS: --"
+fpsLabel.Parent = header
+
+local function refreshName()
+    nameLabel.Text = player.DisplayName .. " (@" .. player.Name .. ")"
+end
+player:GetPropertyChangedSignal("DisplayName"):Connect(refreshName)
+player:GetPropertyChangedSignal("Name"):Connect(refreshName)
+
+task.spawn(function()
+    local ok, content = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            player.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size150x150
+        )
+    end)
+    if ok and content then
+        avatar.Image = content
+    end
+end)
+
+local function applyHealth(humanoid)
+    if not humanoid or humanoid.MaxHealth <= 0 then return end
+    local cur = math.clamp(humanoid.Health, 0, humanoid.MaxHealth)
+    healthLabel.Text = string.format("HEALTH  %d / %d", math.floor(cur), math.floor(humanoid.MaxHealth))
+    local ratio = cur / humanoid.MaxHealth
+    TweenService:Create(healthFill,
+        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Size = UDim2.new(ratio, 0, 1, 0) }
+    ):Play()
+end
+
+local function bindCharacter(char)
+    if not char then return end
+    local hum = char:WaitForChild("Humanoid", 10)
+    if not hum then return end
+    hum.HealthChanged:Connect(function() applyHealth(hum) end)
+    hum:GetPropertyChangedSignal("MaxHealth"):Connect(function() applyHealth(hum) end)
+    applyHealth(hum)
+end
+if player.Character then bindCharacter(player.Character) end
+player.CharacterAdded:Connect(bindCharacter)
+
+local fpsTracker = 60
+RunService.RenderStepped:Connect(function(dt)
+    fpsTracker = math.floor(1 / dt)
+end)
+
+local pingAccum = 0
+RunService.Heartbeat:Connect(function(dt)
+    pingAccum += dt
+    if pingAccum < 0.5 then return end
+    pingAccum = 0
+
+    local ok, ping = pcall(function()
+        return math.floor(player:GetNetworkPing() * 1000)
+    end)
+    pingLabel.Text = string.format("PING: %sms", ok and ping or "--")
+    fpsLabel.Text  = string.format("FPS: %d", fpsTracker)
+end)
+
+-- ============================================================
+--  Tab bar + pages + button grid (Neon)
+-- ============================================================
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, -24, 0, 34)
+tabBar.Position = UDim2.new(0, 12, 0, 96)
+tabBar.BackgroundColor3 = PANEL_DARK2
+tabBar.BorderSizePixel = 0
+tabBar.Parent = panel
+corner(tabBar, 10)
+stroke(tabBar, NEON_PURPLE, 1.5)
+
+local pages, tabButtons, tabStrokes = {}, {}, {}
+local actionRegistry = {} -- [tab][index] = fn
+
+for i = 1, TAB_COUNT do
+    local page = Instance.new("ScrollingFrame")
+    page.Name = "Tab" .. i .. "_Page"
+    page.Size = UDim2.new(1, -24, 1, -144)
+    page.Position = UDim2.new(0, 12, 0, 138)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.ScrollBarThickness = 4
+    page.ScrollBarImageColor3 = NEON_PURPLE
+    page.Visible = (i == 1)
+    page.Parent = panel
+
+    local grid = Instance.new("UIGridLayout")
+    grid.CellSize = UDim2.new(0, CELL_W, 0, CELL_H)
+    grid.CellPadding = UDim2.new(0, 8, 0, 8)
+    grid.SortOrder = Enum.SortOrder.LayoutOrder
+    grid.Parent = page
+
+    local pad = Instance.new("UIPadding")
+    pad.PaddingTop = UDim.new(0, 4)
+    pad.PaddingLeft = UDim.new(0, 4)
+    pad.Parent = page
+
+    pages[i] = page
+    actionRegistry[i] = {}
+
+    for b = 1, BTNS_PER_TAB do
+        local btn = Instance.new("TextButton")
+        btn.Name = string.format("Tab%d_Btn%d", i, b)
+        btn.Text = "Button " .. b
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 11
+        btn.TextColor3 = NEON_CYAN
+        btn.BackgroundColor3 = BTN_DARK
+        btn.AutoButtonColor = false
+        btn.TextTruncate = Enum.TextTruncate.AtEnd
+        btn.LayoutOrder = b
+        btn.Parent = page
+        corner(btn, 10)
+        local bs = stroke(btn, NEON_CYAN, 2)
+
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = BTN_HOVER }):Play()
+            TweenService:Create(bs, TweenInfo.new(0.12), { Thickness = 2.8 }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.12), { BackgroundColor3 = BTN_DARK }):Play()
+            TweenService:Create(bs, TweenInfo.new(0.12), { Thickness = 2 }):Play()
+        end)
+
+        btn.MouseButton1Click:Connect(function()
+            flashStroke(btn)
+            local fn = actionRegistry[i][b]
+            if fn then
+                run_secure(fn)
+            end
+        end)
+    end
+
+    local nav = Instance.new("TextButton")
+    nav.Size = UDim2.new(1 / TAB_COUNT, -8, 1, -8)
+    nav.Position = UDim2.new((i - 1) * (1 / TAB_COUNT), 4, 0, 4)
+    nav.Text = "TAB " .. i
+    nav.Font = Enum.Font.GothamBold
+    nav.TextSize = 12
+    nav.AutoButtonColor = false
+    nav.BackgroundColor3 = (i == 1) and Color3.fromRGB(32, 16, 48) or BTN_DARK
+    nav.TextColor3 = (i == 1) and NEON_PURPLE or TEXT_DIM
+    nav.Parent = tabBar
+    corner(nav, 8)
+    tabStrokes[i] = stroke(nav, (i == 1) and NEON_PURPLE or Color3.fromRGB(45, 52, 72), 1.5)
+    tabButtons[i] = nav
+
+    nav.MouseButton1Click:Connect(function()
+        flashStroke(nav)
+        for p = 1, TAB_COUNT do
+            local active = (p == i)
+            pages[p].Visible               = active
+            tabButtons[p].BackgroundColor3 = active and Color3.fromRGB(32, 16, 48) or BTN_DARK
+            tabButtons[p].TextColor3       = active and NEON_PURPLE or TEXT_DIM
+            tabStrokes[p].Color            = active and NEON_PURPLE or Color3.fromRGB(45, 52, 72)
+        end
+    end)
+end
+
+-- ============================================================
+--  Public API (Neon Hub) + AUTO-BIND TO customActions
+-- ============================================================
+local Hub = {}
+
+function Hub.setAction(tab, index, fn)
+    if not actionRegistry[tab] then return end
+    if type(fn) ~= "function" then return end
+    actionRegistry[tab][index] = fn
+end
+
+function Hub.setLabel(tab, index, text)
+    local page = pages[tab]
+    if not page then return end
+    local btn = page:FindFirstChild(string.format("Tab%d_Btn%d", tab, index))
+    if btn then
+        btn.Text = tostring(text)
+    end
+end
+
+function Hub.toggle(visible)
+    if visible == nil then
+        visible = not panel.Visible
+    end
+    panel.Visible = visible
+    if visible then
+        panel.Size = UDim2.new(0, 0, 0, 0)
+        TweenService:Create(panel,
+            TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+            { Size = UDim2.new(0, PANEL_W, 0, PANEL_H) }
+        ):Play()
+    end
+end
+
+openBtn.MouseButton1Click:Connect(function()
+    flashStroke(openBtn)
+    Hub.toggle()
+end)
+
+-- ============================================================
+--  AUTO-BIND OLD customActions INTO NEON HUB
+-- ============================================================
+local tabKeyByIndex = {
+    [1] = "Tab1",
+    [2] = "Tab2",
+    [3] = "Tab3",
+}
+
+for tabIndex = 1, TAB_COUNT do
+    local key = tabKeyByIndex[tabIndex]
+    local cfg = customActions[key]
+    if cfg then
+        for btnIndex = 1, BTNS_PER_TAB do
+            local item = cfg[btnIndex]
+            if item then
+                if item.name then
+                    Hub.setLabel(tabIndex, btnIndex, item.name)
+                end
+                if item.run then
+                    Hub.setAction(tabIndex, btnIndex, item.run)
+                end
+            end
+        end
+    end
+end
+
+return Hub
