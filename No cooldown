@@ -1,144 +1,24 @@
--- Improved Fast Luau Speed Hook Engine
--- Modern, type-checked, hybrid approach: frame-aligned fast yields for short waits,
--- native scheduler for longer sleeps, safe hooks with restore helper.
+-- ⚡ No Cooldown
 
--- Services
 local RunService = game:GetService("RunService")
-local PostSim: RBXScriptSignal = RunService.PostSimulation
 
--- Validate PostSimulation
-if typeof(PostSim) ~= "RBXScriptSignal" or type(PostSim.Wait) ~= "function" then
-    warn("[Speed Engine] RunService.PostSimulation unavailable. Aborting.")
-    return
-end
+--================================================
+-- ⚡ GLOBAL COOLDOWN BREAKER (Original Power)
+--================================================
+hookfunction(wait, function()
+	return RunService.PostSimulation:Wait()
+end)
 
--- Detect hookfunction
-local _hookfunction = hookfunction
-if not _hookfunction and hookmetamethod then
-    pcall(function()
-        _hookfunction = _G.hookfunction or _hookfunction
-    end)
-end
+hookfunction(task.wait, function()
+	return RunService.PostSimulation:Wait()
+end)
 
-if not _hookfunction then
-    warn("[Speed Engine] Executor does not support 'hookfunction'. Aborting.")
-    return
-end
+hookfunction(delay, function(_,func)
+	task.spawn(func)
+end)
 
--- Storage for originals to allow best-effort restore
-local originals: { [string]: any } = {}
+hookfunction(spawn, function(func)
+	task.spawn(func)
+end)
 
--- Fast frame-aligned yield using PostSimulation
-local function fastYield(): number
-    return PostSim:Wait()
-end
-
--- Hybrid wait: use fastYield for short durations, native task.wait for longer durations
-local function hybridWait(duration: number?): number
-    local d = tonumber(duration) or 0
-    local threshold = 0.05 -- seconds; tune this to your needs
-    if d <= 0 or d < threshold then
-        return fastYield()
-    else
-        return task.wait(d)
-    end
-end
-
--- Fast delay/spawn implementation that respects hybrid semantics
-local function fastDelay(duration: number?, callback: (...any) -> (), ...: any): thread?
-    if type(callback) ~= "function" then
-        return nil
-    end
-    return task.spawn(function()
-        local d = tonumber(duration) or 0
-        if d > 0 then
-            local target = os.clock() + d
-            while os.clock() < target do
-                fastYield()
-            end
-        end
-        callback(...)
-    end)
-end
-
-local function fastSpawn(func: (...any) -> (), ...: any): thread?
-    if type(func) ~= "function" then
-        return nil
-    end
-    return task.spawn(func, ...)
-end
-
--- Safe hook helper that stores originals
-local function safeHook(name: string, originalFn: any, replacement: any)
-    if type(originalFn) ~= "function" then
-        return
-    end
-    originals[name] = originalFn
-    local ok, err = pcall(function()
-        _hookfunction(originalFn, replacement)
-    end)
-    if not ok then
-        warn(("[Speed Engine] Failed to hook %s: %s"):format(name, tostring(err)))
-    end
-end
-
--- Patch task.wait -> hybridWait
-if type(task) == "table" and type(task.wait) == "function" then
-    safeHook("task.wait", task.wait, function(duration: number?): number
-        return hybridWait(duration)
-    end)
-else
-    warn("[Speed Engine] task.wait not found; skipping patch.")
-end
-
--- Patch task.delay -> fastDelay
-if type(task) == "table" and type(task.delay) == "function" then
-    safeHook("task.delay", task.delay, fastDelay)
-else
-    warn("[Speed Engine] task.delay not found; skipping patch.")
-end
-
--- Patch getgenv legacy functions if present
-if type(getgenv) == "function" then
-    local env = getgenv()
-
-    if type(env.wait) == "function" then
-        safeHook("getgenv.wait", env.wait, function(duration: number?): number
-            return hybridWait(duration)
-        end)
-    end
-
-    if type(env.delay) == "function" then
-        safeHook("getgenv.delay", env.delay, fastDelay)
-    end
-
-    if type(env.spawn) == "function" then
-        safeHook("getgenv.spawn", env.spawn, function(func: (...any) -> (), ...: any): thread?
-            return fastSpawn(func, ...)
-        end)
-    end
-end
-
--- Best-effort unpatch helper
-local function unpatch()
-    for name, orig in pairs(originals) do
-        if type(orig) == "function" then
-            local ok, err = pcall(function()
-                _hookfunction(orig, orig)
-            end)
-            if not ok then
-                warn(("[Speed Engine] Could not restore %s: %s"):format(name, tostring(err)))
-            end
-        end
-    end
-    originals = {}
-    print("[Speed Engine] Unpatch attempted. Some hooks may remain depending on executor.")
-end
-
--- Expose unpatch in getgenv for user control
-if type(getgenv) == "function" then
-    getgenv().__SpeedEngineUnpatch = unpatch
-end
-
-print("⚡ MODERN MAX-SPEED ENGINE LOADED SUCCESSFULLY ⚡")
-print("⚠️ Call getgenv().__SpeedEngineUnpatch() to attempt restore if needed.")
+print("⚡ No Cooldown Running")
