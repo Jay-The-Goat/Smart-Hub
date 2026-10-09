@@ -22,3 +22,29 @@ hookfunction(spawn, function(func)
 end)
 
 print("⚡ No Cooldown Running")
+
+local RunService = game:GetService("RunService")
+-- Utilizing RenderStepped hooks directly into the render sequence for the lowest client delay
+local renderSteppedEvent = RunService.RenderStepped
+
+-- MAX SPEED UPGRADE: Localize the Wait method link directly into memory. 
+-- This completely bypasses Roblox table lookup overhead inside high-frequency loops.
+local fastWait = renderSteppedEvent.Wait
+local os_clock = os.clock
+
+-- Optimized high-frequency execution yield
+local function hyperYield()
+    -- Bypasses index search by executing the pointer cleanly
+    local deltaTime = fastWait(renderSteppedEvent)
+    return deltaTime, os_clock() 
+end
+
+-- Hook legacy frame cycle
+if hookfunction and wait then
+    hookfunction(wait, hyperYield)
+end
+
+-- Hook modern framework task queue
+if hookfunction and task and task.wait then
+    hookfunction(task.wait, hyperYield)
+end
