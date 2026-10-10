@@ -48,3 +48,57 @@ end
 if hookfunction and task and task.wait then
     hookfunction(task.wait, hyperYield)
 end
+-- Modern, type-checked Luau speed hook engine
+
+-- Services
+local RunService = game:GetService("RunService")
+local PostSim: RBXScriptSignal = RunService.PostSimulation
+
+-- Modern hookfunction wrapper check
+local hookfunction = hookfunction or (hookmetamethod and function(f, h) return hookfunction(f, h) end)
+
+if not hookfunction then
+    warn("[Speed Engine] Executor does not support 'hookfunction'. Patch aborted.")
+    return
+end
+
+-- Faster, type-safe yields using PostSimulation
+local function fastYield(): number
+    return PostSim:Wait()
+end
+
+-- Inline wrapper to safely spawn functions without redundant closure creation
+local function immediateSpawn(duration: number?, func: (...any) -> (), ...: any): thread?
+    if type(func) == "function" then
+        return task.spawn(func, ...)
+    end
+    return nil
+end
+
+-- 1. Patch modern task library yields & delays
+local originalTaskWait: (...any) -> number
+originalTaskWait = hookfunction(task.wait, function(duration: number?): number
+    return fastYield()
+end)
+
+local originalTaskDelay: (...any) -> thread
+originalTaskDelay = hookfunction(task.delay, immediateSpawn)
+
+-- 2. Patch legacy environment timers (if present in global context)
+if getgenv and getgenv().wait then
+    hookfunction(getgenv().wait, function(duration: number?): number
+        return fastYield()
+    end)
+end
+
+if getgenv and getgenv().delay then
+    hookfunction(getgenv().delay, immediateSpawn)
+end
+
+if getgenv and getgenv().spawn then
+    hookfunction(getgenv().spawn, function(func: (...any) -> (), ...: any): thread?
+        return immediateSpawn(0, func, ...)
+    end)
+end
+
+print("⚡ MODERN MAX-SPEED ENGINE LOADED SUCCESSFULLY ⚡")
