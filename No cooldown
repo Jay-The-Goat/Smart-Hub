@@ -11,22 +11,25 @@ export default {
     }
 
     if (request.method !== "POST") {
-      return new Response("Delta AI is online!", { headers: cors });
+      return new Response("Delta AI is online!", {
+        headers: cors
+      });
     }
 
     try {
-      const { message } = await request.json();
+      const body = await request.json();
+      const message = body.message;
 
       if (!message || typeof message !== "string") {
         return Response.json(
-          { error: "Enter a message first." },
+          { error: "Please enter a message." },
           { status: 400, headers: cors }
         );
       }
 
       if (!env.GROQ_API_KEY) {
         return Response.json(
-          { error: "Groq API key is missing." },
+          { error: "Groq API key is missing. Check Cloudflare Secrets." },
           { status: 500, headers: cors }
         );
       }
@@ -40,11 +43,23 @@ export default {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             messages: [
               {
                 role: "system",
-                content: "You are Delta AI, a helpful Roblox assistant. Help with Roblox updates, Lua scripting for Roblox Studio, and game development. Never claim to execute scripts inside Roblox."
+                content: `You are Delta AI, an advanced Roblox assistant.
+
+Your responsibilities:
+- Help users understand Roblox updates.
+- Help with Roblox Lua scripting.
+- Help with Roblox Studio development.
+- Explain game mechanics.
+- Help troubleshoot Roblox issues.
+- Provide compatibility information based on available public information.
+- Be friendly, intelligent, and detailed.
+
+Never claim to execute scripts inside Roblox.
+Never claim to bypass Roblox anti-cheat.`
               },
               {
                 role: "user",
@@ -52,7 +67,7 @@ export default {
               }
             ],
             temperature: 0.7,
-            max_tokens: 1000
+            max_tokens: 1200
           })
         }
       );
@@ -61,22 +76,32 @@ export default {
 
       if (!response.ok) {
         return Response.json(
-          { error: data.error?.message || "Groq request failed." },
-          { status: response.status, headers: cors }
+          {
+            error: data.error?.message || "Groq AI request failed."
+          },
+          {
+            status: response.status,
+            headers: cors
+          }
         );
       }
 
+      const answer =
+        data.choices?.[0]?.message?.content ||
+        "Delta AI couldn't generate a response.";
+
       return Response.json(
-        {
-          reply: data.choices?.[0]?.message?.content || "No response generated."
-        },
+        { reply: answer },
         { headers: cors }
       );
 
     } catch (error) {
       return Response.json(
-        { error: "Something went wrong. Try again." },
-        { status: 500, headers: cors }
+        { error: "Delta AI encountered an unexpected error." },
+        {
+          status: 500,
+          headers: cors
+        }
       );
     }
   }
