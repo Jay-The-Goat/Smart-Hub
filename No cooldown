@@ -1,108 +1,169 @@
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...CORS,
+      "Content-Type": "application/json"
+    }
+  });
+}
+
+async function getRobloxData() {
+  const results = await Promise.allSettled([
+    fetch("https://status.roblox.com/api/v2/status.json"),
+    fetch("https://devforum.roblox.com/c/updates/45.json")
+  ]);
+
+  let status = {
+    available: false,
+    description: "Status unavailable",
+    indicator: "unknown"
+  };
+
+  let updates = [];
+
+  if (results[0].status === "fulfilled" &&
+      results[0].value.ok) {
+    const data = await results[0].value.json();
+
+    status = {
+      available: true,
+      description: data.status?.description || "Unknown",
+      indicator: data.status?.indicator || "unknown",
+      checkedAt: new Date().toISOString()
+    };
+  }
+
+  if (results[1].status === "fulfilled" &&
+      results[1].value.ok) {
+    const data = await results[1].value.json();
+
+    updates = (data.topic_list?.topics || [])
+      .slice(0, 15)
+      .map(topic => ({
+        title: topic.title,
+        category: topic.category_id,
+        replies: topic.reply_count,
+        views: topic.views,
+        date: topic.created_at,
+        url: "https://devforum.roblox.com/t/" +
+          topic.slug + "/" + topic.id
+      }));
+  }
+
+  return {
+    scannedAt: new Date().toISOString(),
+    status,
+    updates,
+    sources: [
+      "https://status.roblox.com/",
+      "https://devforum.roblox.com/c/updates/45"
+    ]
+  };
+}
+
 export default {
   async fetch(request, env) {
-    const cors = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type"
-    };
-
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: cors });
+      return new Response(null, { headers: CORS });
     }
 
-    if (request.method !== "POST") {
-      return new Response("Delta AI is online!", {
-        headers: cors
-      });
+    const url = new URL(request.url);
+
+    // Roblox intelligence scanner
+    if (url.pathname === "/scan" && request.method === "GET") {
+      try {
+        const report = await getRobloxData();
+        return json(report);
+      } catch (error) {
+        return json({
+          error: "Roblox scan failed.",
+          details: error.message
+        }, 500);
+      }
     }
 
-    try {
-      const body = await request.json();
-      const message = body.message;
+    // AI assistant
+    if (request.method === "POST") {
+      try {
+        const body = await request.json();
+        const message = body.message;
+        const context = body.context || "";
 
-      if (!message || typeof message !== "string") {
-        return Response.json(
-          { error: "Please enter a message." },
-          { status: 400, headers: cors }
-        );
-      }
-
-      if (!env.GROQ_API_KEY) {
-        return Response.json(
-          { error: "Groq API key is missing. Check Cloudflare Secrets." },
-          { status: 500, headers: cors }
-        );
-      }
-
-      const response = await fetch(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${env.GROQ_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "openai/gpt-oss-120b",
-            messages: [
-              {
-                role: "system",
-                content: `You are Delta AI, an advanced Roblox assistant.
-
-Your responsibilities:
-- Help users understand Roblox updates.
-- Help with Roblox Lua scripting.
-- Help with Roblox Studio development.
-- Explain game mechanics.
-- Help troubleshoot Roblox issues.
-- Provide compatibility information based on available public information.
-- Be friendly, intelligent, and detailed.
-
-Never claim to execute scripts inside Roblox.
-Never claim to bypass Roblox anti-cheat.`
-              },
-              {
-                role: "user",
-                content: message
-              }
-            ],
-            temperature: 0.7,
-            max_tokens: 1200
-          })
+        if (!message || typeof message !== "string") {
+          return json({ error: "Enter a message." }, 400);
         }
-      );
 
-      const data = await response.json();
+        if (!env.GROQ_API_KEY) {
+          return json({ error: "Missing GROQ_API_KEY secret." }, 500);
+        }
 
-      if (!response.ok) {
-        return Response.json(
+        const response = await fetch(
+          "https://api.groq.com/openai/v1/chat/completions",
           {
-            error: data.error?.message || "Groq AI request failed."
-          },
-          {
-            status: response.status,
-            headers: cors
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${env.GROQ_API_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "openai/gpt-oss-120b",
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are Delta AI, a Roblox intelligence assistant. " +
+                    "Explain Roblox announcements, service incidents, " +
+                    "release notes, Lua scripting, and Roblox Studio development. " +
+                    "When scanner data is provided, use it as your evidence. " +
+                    "Distinguish official announcements from assumptions. " +
+                    "Never claim to know private Roblox client builds or " +
+                    "executor compatibility unless reliable data is provided. " +
+                    "You cannot execute scripts inside Roblox or bypass anti-cheat."
+                },
+                {
+                  role: "user",
+                  content:
+                    "SCANNER INFORMATION:\n" +
+                    (context || "No scanner report attached.") +
+                    "\n\nUSER QUESTION:\n" + message
+                }
+              ],
+              temperature: 0.6,
+              max_tokens: 1400
+            })
           }
         );
-      }
 
-      const answer =
-        data.choices?.[0]?.message?.content ||
-        "Delta AI couldn't generate a response.";
+        const data = await response.json();
 
-      return Response.json(
-        { reply: answer },
-        { headers: cors }
-      );
-
-    } catch (error) {
-      return Response.json(
-        { error: "Delta AI encountered an unexpected error." },
-        {
-          status: 500,
-          headers: cors
+        if (!response.ok) {
+          return json({
+            error: data.error?.message || "Groq request failed."
+          }, response.status);
         }
-      );
+
+        return json({
+          reply:
+            data.choices?.[0]?.message?.content ||
+            "Delta AI couldn't generate a response."
+        });
+
+      } catch (error) {
+        return json({
+          error: "AI request failed: " + error.message
+        }, 500);
+      }
     }
+
+    return new Response("Delta AI intelligence backend online.", {
+      headers: CORS
+    });
   }
 };
