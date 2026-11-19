@@ -1,51 +1,58 @@
 export default {
   async fetch(request, env) {
-    const corsHeaders = {
+    const cors = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type"
     };
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { headers: cors });
     }
 
     if (request.method !== "POST") {
-      return new Response("Delta AI backend is online!", {
-        headers: corsHeaders
-      });
+      return new Response("Delta AI is online!", { headers: cors });
     }
 
     try {
-      const body = await request.json();
-      const message = body.message;
+      const { message } = await request.json();
 
       if (!message || typeof message !== "string") {
         return Response.json(
-          { error: "Please enter a message." },
-          { status: 400, headers: corsHeaders }
+          { error: "Enter a message first." },
+          { status: 400, headers: cors }
         );
       }
 
-      if (!env.OPENAI_API_KEY) {
+      if (!env.GROQ_API_KEY) {
         return Response.json(
-          { error: "AI is not configured yet. Add your API key to Worker secrets." },
-          { status: 500, headers: corsHeaders }
+          { error: "Groq API key is missing." },
+          { status: 500, headers: cors }
         );
       }
 
       const response = await fetch(
-        "https://api.openai.com/v1/responses",
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+            "Authorization": `Bearer ${env.GROQ_API_KEY}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "gpt-5-mini",
-            instructions: "You are Delta AI, a helpful Roblox assistant. Help users understand Roblox updates, game development, Lua scripting for their own Roblox Studio projects, and compatibility information. Never claim to execute scripts inside Roblox.",
-            input: message
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content: "You are Delta AI, a helpful Roblox assistant. Help with Roblox updates, Lua scripting for Roblox Studio, and game development. Never claim to execute scripts inside Roblox."
+              },
+              {
+                role: "user",
+                content: message
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 1000
           })
         }
       );
@@ -54,26 +61,22 @@ export default {
 
       if (!response.ok) {
         return Response.json(
-          { error: data.error?.message || "AI request failed." },
-          { status: response.status, headers: corsHeaders }
+          { error: data.error?.message || "Groq request failed." },
+          { status: response.status, headers: cors }
         );
       }
 
-      const answer = data.output
-        ?.flatMap(item => item.content || [])
-        ?.filter(item => item.type === "output_text")
-        ?.map(item => item.text)
-        ?.join("\n") || "I couldn't generate a response.";
-
       return Response.json(
-        { reply: answer },
-        { headers: corsHeaders }
+        {
+          reply: data.choices?.[0]?.message?.content || "No response generated."
+        },
+        { headers: cors }
       );
 
     } catch (error) {
       return Response.json(
-        { error: "Something went wrong. Please try again." },
-        { status: 500, headers: corsHeaders }
+        { error: "Something went wrong. Try again." },
+        { status: 500, headers: cors }
       );
     }
   }
